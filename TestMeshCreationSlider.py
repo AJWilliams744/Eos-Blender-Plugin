@@ -7,12 +7,12 @@ baseLocation = "D:/Users/Alex/Documents/Personal/Uni/Diss/WorkFolder/eos/out/ins
 
 
 def getCoefficients(o):
+    
 
-    cooCount = base.get_shape_model().get_num_principal_components()
-    colourCount = base.get_color_model().get_num_principal_components()
-
-    print("ColourCount : %d", colourCount)
-    expreCount = len(base.get_expression_model())
+    #print(o.my_settings.ShapeCount)
+    cooCount = o.my_settings.ShapeCount
+    colourCount = o.my_settings.ColourCount
+    expreCount = o.my_settings.ExpressionCount
 
     me = [[0.0]* cooCount, [0.0]* colourCount, [0.0]* expreCount]
 
@@ -40,17 +40,8 @@ def refreshModel():
 
     mesh = o.data
 
-   # bm = bmesh.new()
-    #bm.from_mesh(mesh)  
-    # 
-
-
     morphModel = base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
 
-
-   # difference = np.subtract(newVert, morphModel.vertices)
-
-    #new_location = [0.0] * 3
     i = 0
 
     mesh.clear_geometry()
@@ -59,52 +50,12 @@ def refreshModel():
     edges = []
     faces = morphModel.tvi
 
-    mesh.from_pydata(verts, edges, faces)
-
-    # for vert in newVert: 
-
-    #     # vert.co = morphModel.vertices[i]
-    #     i = i + 1
-        
-    #bm.to_mesh(mesh)
-    #bm.free()    
+    mesh.from_pydata(verts, edges, faces) 
 
 def resize(self, context):
     refreshModel()
     return
 
-    # o = bpy.context.object
-
-    # coofficient = getCoefficients(o)
-
-    # mesh = o.data
-
-    # morphModel = base.draw_sample(coofficient,coofficient)
-
-    # new_location = [0.0] * 3
-
-    # i = 0
-
-    # for vert in mesh.vertices:
-
-    #     # new_location[0] = morphModel.vertices[i][0]
-    #     # new_location[1] = morphModel.vertices[i][1]
-    #     # new_location[2] = morphModel.vertices[i][2]        
-
-    #     new_location = morphModel.vertices[i]
-    #     vert.co = new_location
-        
-    #     # new_location[0] = new_location[0] + 1
-    #     # new_location[1] = new_location[1] + 1
-    #     # new_location[2] = new_location[2] + 1       
-
-           
-
-    #     i = i + 1
-
-        
-
-    # #o.dimensions.x = o.my_settings.length[]
 
 def CreateBlenderMesh(mesh):
     blendObj = bpy.data.meshes.new("aNewMesh")  # add the new mesh    
@@ -118,6 +69,8 @@ def CreateBlenderMesh(mesh):
     faces = mesh.tvi
 
     blendObj.from_pydata(verts, edges, faces)
+
+    return obj
 
 def LoadFaceModel():
     model = eos.morphablemodel.load_model(baseLocation + "share/sfm_shape_3448.bin")
@@ -133,6 +86,8 @@ def LoadFaceModel():
                                                                         vertex_definitions=None,
                                                                         texture_coordinates=model.get_texture_coordinates())
 
+    
+
    
     return morphablemodel_with_expressions
 
@@ -142,7 +97,22 @@ def CreateBaseShape():
 
     secondMesh = base.draw_sample([0,0,0],[0,0,0])
 
-    CreateBlenderMesh(secondMesh)
+    obj = CreateBlenderMesh(secondMesh)
+
+    obj.my_settings.ShapeCount = base.get_shape_model().get_num_principal_components()
+    obj.my_settings.ColourCount = base.get_color_model().get_num_principal_components()
+    obj.my_settings.ExpressionCount = len(base.get_expression_model())
+
+    if not obj.get('_RNA_UI'):
+        obj['_RNA_UI'] = {}
+
+    for x in range(obj.my_settings.ShapeCount + obj.my_settings.ColourCount + obj.my_settings.ExpressionCount):
+        k = "line_%d" % x  
+        obj[k] = 0.0
+        obj['_RNA_UI'][k] = {"description":"data", "default" : 0.0, "min" : -3.0, "max" : 3.0, "soft_min" : -3.0, "soft_max" : 3.0, "step" : 0.1}
+
+
+
 
 # base = LoadFaceModel()
 # cooCount = base.get_shape_model().get_num_principal_components()
@@ -152,11 +122,15 @@ def CreateBaseShape():
 # expreCount = len(base.get_expression_model())
 
 class MySettings(bpy.types.PropertyGroup):
-    #reverse : bpy.props.BoolProperty(name = "Direction", description = "Direction",default = False )    
-    __annotations__ = {}
+   
+    # __annotations__ = {}
 
-    __annotations__ =  {'line_%d' %x  : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
-    for x in range(0,cooCount + colourCount + expreCount)}
+    # __annotations__ =  {'line_%d' %x  : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
+    # for x in range(0,cooCount + colourCount + expreCount)}
+
+    ExpressionCount : bpy.props.IntProperty(name = "ExpressionCount", description = "Number of Expressions",default = 0)
+    ColourCount : bpy.props.IntProperty(name = "ColourCount", description = "Number of Colour",default = 0) 
+    ShapeCount : bpy.props.IntProperty(name = "ShapeCount", description = "Number of Shapes",default = 0)     
 
 class Shape_Slider(bpy.types.Operator):
     bl_idname = "view3d.add_frame"
@@ -166,7 +140,7 @@ class Shape_Slider(bpy.types.Operator):
     def execute(self, context):
 
         CreateBaseShape()
-            
+
         return {'FINISHED'}
 
 class TEST_PT_Panel(bpy.types.Panel):
@@ -197,6 +171,9 @@ class TEST_PT_Panel(bpy.types.Panel):
                 row = box.row()
                 row.label(text = "Object: " + ob.name)
 
+                cooCount = ob.my_settings.ShapeCount
+                colourCount = ob.my_settings.ColourCount
+                expreCount = ob.my_settings.ExpressionCount
             
 
                 #row = box.row()
@@ -212,7 +189,7 @@ class TEST_PT_Panel(bpy.types.Panel):
                     for x in range(0,cooCount):             
 
                         k = "line_%d" % x   
-                        cf.prop(obj.my_settings, k)
+                        cf.prop(obj, '["' + k + '"]')
 
                 if(colourCount > 0):
 
@@ -223,7 +200,7 @@ class TEST_PT_Panel(bpy.types.Panel):
                     for x in range(cooCount,colourCount):             
 
                         k = "line_%d" % x   
-                        cf.prop(obj.my_settings, k)
+                        cf.prop(obj, '["' + k + '"]')
                 
                 if(expreCount > 0):
 
@@ -234,7 +211,8 @@ class TEST_PT_Panel(bpy.types.Panel):
                     for x in range(cooCount + colourCount, cooCount + colourCount + expreCount):             
 
                         k = "line_%d" % x   
-                        cf.prop(obj.my_settings, k)
+                        cf.prop(obj, '["' + k + '"]')
+                        #cf.prop(obj.my_settings, k)
 
         else:
             row = box.row()
