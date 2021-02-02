@@ -5,11 +5,18 @@ import bmesh
 
 baseLocation = "D:/Users/Alex/Documents/Personal/Uni/Diss/WorkFolder/eos/out/install/x86-Debug/"
 
+class ShapeKeeper():
+    base = ""
+
+aShapeKeeper = ShapeKeeper()
+
 def getCoefficients(o):
 
     cooCount = o.my_settings.ShapeCount
     colourCount = o.my_settings.ColourCount
     expreCount = o.my_settings.ExpressionCount
+
+    if len(o.sliders.sliderList) < cooCount + colourCount + expreCount : return
 
     me = [[0.0]* cooCount, [0.0]* colourCount, [0.0]* expreCount]
 
@@ -18,7 +25,7 @@ def getCoefficients(o):
         me[0][x] =  o.sliders.sliderList[x].value
        # print(me[x])
 
-    for x in range(cooCount,cooCount + colourCount):            
+    for x in range(cooCount,cooCount + colourCount):           
 
         me[1][x - cooCount] =  o.sliders.sliderList[x].value
         #print(me[x])
@@ -27,17 +34,26 @@ def getCoefficients(o):
 
         me[2][x - cooCount - colourCount] =  o.sliders.sliderList[x].value
         #print(me[x])
-    
+
     return me
 
 def refreshModel():
+
+    #if aShapeKeeper.base == "": return
+
     o = bpy.context.object
 
     coofficient = getCoefficients(o)
 
+    if not(coofficient) : return
+
     mesh = o.data
 
-    morphModel = base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
+    if not(aShapeKeeper.base):
+        LoadFaceModel()
+        return
+
+    morphModel = aShapeKeeper.base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
 
     i = 0
 
@@ -85,8 +101,11 @@ def LoadFaceModel():
 
     
 
-   
+    aShapeKeeper.base = morphablemodel_with_expressions
     return morphablemodel_with_expressions
+
+
+
 
 def CreateBaseShape():
     
@@ -103,14 +122,20 @@ def CreateBaseShape():
     if not obj.get('_RNA_UI'):
         obj['_RNA_UI'] = {}
 
-    for x in range(obj.my_settings.ShapeCount + obj.my_settings.ColourCount + obj.my_settings.ExpressionCount):
+    for x in range(0,obj.my_settings.ShapeCount + obj.my_settings.ColourCount + obj.my_settings.ExpressionCount):
         prop = obj.sliders.sliderList.add()
         prop.value = 0
 
+   
+
+    print(aShapeKeeper.base)
+
+    return base
 
 
 
-base = LoadFaceModel()
+
+#base = LoadFaceModel()
 # cooCount = base.get_shape_model().get_num_principal_components()
 # colourCount = base.get_color_model().get_num_principal_components()
 
@@ -130,15 +155,26 @@ class SliderList(bpy.types.PropertyGroup):
     sliderList : bpy.props.CollectionProperty(type=SliderProp)
 
 class Create_Model(bpy.types.Operator):
-    bl_idname = "view3d.add_frame"
+    bl_idname = "view3d.create_model"
     bl_label = "Create Model"
-    bl_destription = "Able to create and manipulate shape key"
+    bl_destription = "A button to create a new morphable face"
 
     def execute(self, context):
 
         CreateBaseShape()
 
         return {'FINISHED'}
+
+# class Slider_Menu(bpy.types.Operator):
+#     bl_idname = "view3d.add_frame"
+#     bl_label = "Moves Page"
+#     bl_destription = "Moves page of current sliders"
+
+#     def execute(self, context):
+
+#         CreateBaseShape()
+
+#         return {'FINISHED'}
 
 class TEST_PT_Panel(bpy.types.Panel):
     bl_idname = "TEST_PT_Panel"
@@ -161,7 +197,7 @@ class TEST_PT_Panel(bpy.types.Panel):
             if(objType == "MESH"):
 
                 row = box.row()
-                row.operator('view3d.add_frame')              
+                row.operator('view3d.create_model')              
 
                 ob = context.active_object
                 
@@ -227,6 +263,7 @@ def register():
     from bpy.utils import register_class
     for cls in classes:
         register_class(cls)   
+
     bpy.types.Object.my_settings = bpy.props.PointerProperty(type=MySettings)
     bpy.types.Object.sliders = bpy.props.PointerProperty(type=SliderList)
 
