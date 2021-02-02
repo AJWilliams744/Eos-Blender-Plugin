@@ -5,7 +5,7 @@ import bmesh
 
 baseLocation = "D:/Users/Alex/Documents/Personal/Uni/Diss/WorkFolder/eos/out/install/x86-Debug/"
 
-class ShapeKeeper():
+class ShapeKeeper(): # Create a dictionary with the path to model as key, model and value. check against mysetting property of locations 
     base = ""
 
 aShapeKeeper = ShapeKeeper()
