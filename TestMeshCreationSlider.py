@@ -5,11 +5,8 @@ import bmesh
 
 baseLocation = "D:/Users/Alex/Documents/Personal/Uni/Diss/WorkFolder/eos/out/install/x86-Debug/"
 
-
 def getCoefficients(o):
-    
 
-    #print(o.my_settings.ShapeCount)
     cooCount = o.my_settings.ShapeCount
     colourCount = o.my_settings.ColourCount
     expreCount = o.my_settings.ExpressionCount
@@ -17,18 +14,18 @@ def getCoefficients(o):
     me = [[0.0]* cooCount, [0.0]* colourCount, [0.0]* expreCount]
 
     for x in range(0,cooCount):            
-        k = "line_%d" % x   
-        me[0][x] =  getattr(o.my_settings, k)
+
+        me[0][x] =  o.sliders.sliderList[x].value
        # print(me[x])
 
     for x in range(cooCount,cooCount + colourCount):            
-        k = "line_%d" % x   
-        me[1][x - cooCount] =  getattr(o.my_settings, k)
+
+        me[1][x - cooCount] =  o.sliders.sliderList[x].value
         #print(me[x])
 
     for x in range(cooCount + colourCount,cooCount + colourCount + expreCount):            
-        k = "line_%d" % x   
-        me[2][x - cooCount + colourCount] =  getattr(o.my_settings, k)
+
+        me[2][x - cooCount - colourCount] =  o.sliders.sliderList[x].value
         #print(me[x])
     
     return me
@@ -107,14 +104,13 @@ def CreateBaseShape():
         obj['_RNA_UI'] = {}
 
     for x in range(obj.my_settings.ShapeCount + obj.my_settings.ColourCount + obj.my_settings.ExpressionCount):
-        k = "line_%d" % x  
-        obj[k] = 0.0
-        obj['_RNA_UI'][k] = {"description":"data", "default" : 0.0, "min" : -3.0, "max" : 3.0, "soft_min" : -3.0, "soft_max" : 3.0, "step" : 0.1}
+        prop = obj.sliders.sliderList.add()
+        prop.value = 0
 
 
 
 
-# base = LoadFaceModel()
+base = LoadFaceModel()
 # cooCount = base.get_shape_model().get_num_principal_components()
 # colourCount = base.get_color_model().get_num_principal_components()
 
@@ -123,16 +119,17 @@ def CreateBaseShape():
 
 class MySettings(bpy.types.PropertyGroup):
    
-    # __annotations__ = {}
-
-    # __annotations__ =  {'line_%d' %x  : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
-    # for x in range(0,cooCount + colourCount + expreCount)}
-
     ExpressionCount : bpy.props.IntProperty(name = "ExpressionCount", description = "Number of Expressions",default = 0)
     ColourCount : bpy.props.IntProperty(name = "ColourCount", description = "Number of Colour",default = 0) 
-    ShapeCount : bpy.props.IntProperty(name = "ShapeCount", description = "Number of Shapes",default = 0)     
+    ShapeCount : bpy.props.IntProperty(name = "ShapeCount", description = "Number of Shapes",default = 0)   
 
-class Shape_Slider(bpy.types.Operator):
+class SliderProp(bpy.types.PropertyGroup):
+    value : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
+
+class SliderList(bpy.types.PropertyGroup):
+    sliderList : bpy.props.CollectionProperty(type=SliderProp)
+
+class Create_Model(bpy.types.Operator):
     bl_idname = "view3d.add_frame"
     bl_label = "Create Model"
     bl_destription = "Able to create and manipulate shape key"
@@ -189,7 +186,7 @@ class TEST_PT_Panel(bpy.types.Panel):
                     for x in range(0,cooCount):             
 
                         k = "line_%d" % x   
-                        cf.prop(obj, '["' + k + '"]')
+                        cf.prop(obj.sliders.sliderList[x], "value")
 
                 if(colourCount > 0):
 
@@ -200,7 +197,7 @@ class TEST_PT_Panel(bpy.types.Panel):
                     for x in range(cooCount,colourCount):             
 
                         k = "line_%d" % x   
-                        cf.prop(obj, '["' + k + '"]')
+                        cf.prop(obj.sliders.sliderList[x], "value")
                 
                 if(expreCount > 0):
 
@@ -211,8 +208,8 @@ class TEST_PT_Panel(bpy.types.Panel):
                     for x in range(cooCount + colourCount, cooCount + colourCount + expreCount):             
 
                         k = "line_%d" % x   
-                        cf.prop(obj, '["' + k + '"]')
-                        #cf.prop(obj.my_settings, k)
+                        #cf.prop(obj, '["' + k + '"]')
+                        cf.prop(obj.sliders.sliderList[x], "value")
 
         else:
             row = box.row()
@@ -220,8 +217,10 @@ class TEST_PT_Panel(bpy.types.Panel):
 
 classes = (
     TEST_PT_Panel,
-    Shape_Slider,
-    MySettings
+    Create_Model,
+    MySettings,
+    SliderProp,
+    SliderList
         )
 
 def register():
@@ -229,6 +228,7 @@ def register():
     for cls in classes:
         register_class(cls)   
     bpy.types.Object.my_settings = bpy.props.PointerProperty(type=MySettings)
+    bpy.types.Object.sliders = bpy.props.PointerProperty(type=SliderList)
 
 def unregister():
     from bpy.utils import unregister_class
