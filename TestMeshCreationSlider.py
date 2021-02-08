@@ -86,22 +86,64 @@ def CreateBlenderMesh(mesh):
     return obj
 
 def LoadFaceModel():
-    model = eos.morphablemodel.load_model(baseLocation + "share/sfm_shape_3448.bin")
-   #model = eos.morphablemodel.load_model("D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/LYHM_global.bin")
+
+    morphablemodel_with_expressions = ""
+
+    modelPath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_with_colour.bin"
+    blendshapesPath = ""
+
+    model = eos.morphablemodel.load_model(modelPath)
+
+    #model = eos.morphablemodel.load_model(baseLocation + "share/sfm_shape_3448.bin")
+    #morphablemodel_with_expressions = eos.morphablemodel.load_model(baseLocation + "share/sfm_shape_3448.bin")
+
+    #model = eos.morphablemodel.load_model("D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_with_colour.bin")
+
+    #model = eos.morphablemodel.load_model("D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/LYHM_global.bin")
+
+    #model = eos.morphablemodel.load_model("D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_blendshapes_with_colour.bin")
 
     print("HAS MODEL THING :")
-    print(model.has_separate_expression_model())
+    print(model.get_expression_model_type())
 
-    blendshapes = eos.morphablemodel.load_blendshapes(baseLocation + "share/expression_blendshapes_3448.bin")
+    modelType = model.get_expression_model_type()
 
-    morphablemodel_with_expressions = eos.morphablemodel.MorphableModel(model.get_shape_model(), blendshapes,
-                                                                        color_model=eos.morphablemodel.PcaModel(),
-                                                                        vertex_definitions=None,
-                                                                        texture_coordinates=model.get_texture_coordinates())
+    if(modelType == model.ExpressionModelType.Blendshapes):
+        pass
 
+    elif(modelType == model.ExpressionModelType.PcaModel):
+        pass
+
+    else:
+        pass
+
+
+
+
+    #blendshapes = eos.morphablemodel.load_blendshapes(baseLocation + "share/expression_blendshapes_3448.bin")
+
+    #print(blendshapes)
+    #print("----------------------------------")
+    #blendshapes = eos.morphablemodel.load_model("D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_blendshapes_with_colour.bin")
+    #print(blendshapes)
+
+    # morphablemodel_with_expressions = eos.morphablemodel.MorphableModel(model.get_shape_model(), blendshapes,
+    #                                                                     color_model=eos.morphablemodel.PcaModel(),
+    #                                                                     vertex_definitions=None,
+    #                                                                     texture_coordinates=model.get_texture_coordinates())
+
+    # morphablemodel_with_expressions = eos.morphablemodel.MorphableModel(model.get_shape_model(), blendshapes.get_expression_model(),
+    #                                                                     color_model=eos.morphablemodel.PcaModel(),
+    #                                                                     vertex_definitions=None,
+    #                                                                     texture_coordinates=model.get_texture_coordinates())
+
+    aShapeKeeper.base = model
+
+    if(morphablemodel_with_expressions != ""):
+        aShapeKeeper.base = morphablemodel_with_expressions
+    else:
+        morphablemodel_with_expressions = model
     
-
-    aShapeKeeper.base = morphablemodel_with_expressions
     return morphablemodel_with_expressions
 
 
@@ -115,9 +157,26 @@ def CreateBaseShape():
 
     obj = CreateBlenderMesh(secondMesh)
 
-    obj.my_settings.ShapeCount = base.get_shape_model().get_num_principal_components()
-    obj.my_settings.ColourCount = base.get_color_model().get_num_principal_components()
-    obj.my_settings.ExpressionCount = len(base.get_expression_model())
+    modelType = base.get_expression_model_type()
+
+    if(modelType == None):
+        obj.my_settings.ExpressionCount = 0
+        obj.my_settings.ShapeCount = 0
+        obj.my_settings.ColourCount = 0
+
+    elif(modelType == base.ExpressionModelType.Blendshapes):
+        obj.my_settings.ExpressionCount = len(base.get_expression_model())
+        obj.my_settings.ShapeCount = base.get_shape_model().get_num_principal_components()
+        obj.my_settings.ColourCount = base.get_color_model().get_num_principal_components()
+
+    else:
+        obj.my_settings.ExpressionCount = 0
+        obj.my_settings.ShapeCount = base.get_shape_model().get_num_principal_components()
+        obj.my_settings.ColourCount = base.get_color_model().get_num_principal_components()
+
+    print(obj.my_settings.ShapeCount)
+    print(obj.my_settings.ColourCount)
+    print(obj.my_settings.ExpressionCount)
 
     if not obj.get('_RNA_UI'):
         obj['_RNA_UI'] = {}
@@ -128,7 +187,7 @@ def CreateBaseShape():
 
    
 
-    print(aShapeKeeper.base)
+    #print(aShapeKeeper.base)
 
     return base
 
@@ -187,17 +246,16 @@ class TEST_PT_Panel(bpy.types.Panel):
         layout = self.layout
         scene = context.scene
         obj = context.object
-        box = layout.box()      
+        box = layout.box()     
+
+        row = box.row()
+        row.operator('view3d.create_model')  
         
         if(obj != None):
 
-
             objType = getattr(obj, "type", "")
 
-            if(objType == "MESH"):
-
-                row = box.row()
-                row.operator('view3d.create_model')              
+            if(objType == "MESH"):                             
 
                 ob = context.active_object
                 
@@ -245,11 +303,7 @@ class TEST_PT_Panel(bpy.types.Panel):
 
                         k = "line_%d" % x   
                         #cf.prop(obj, '["' + k + '"]')
-                        cf.prop(obj.sliders.sliderList[x], "value")
-
-        else:
-            row = box.row()
-            row.operator('view3d.add_frame')    
+                        cf.prop(obj.sliders.sliderList[x], "value") 
 
 classes = (
     TEST_PT_Panel,
