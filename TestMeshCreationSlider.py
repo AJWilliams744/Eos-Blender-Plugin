@@ -25,13 +25,15 @@ def getCoefficients(o):
         me[0][x] =  o.sliders.sliderList[x].value
        # print(me[x])
 
+    
     for x in range(cooCount,cooCount + colourCount):           
-
+        #print(x)
         me[1][x - cooCount] =  o.sliders.sliderList[x].value
         #print(me[x])
 
+    #print("-------------------------------------------")
     for x in range(cooCount + colourCount,cooCount + colourCount + expreCount):            
-
+        #print(x)
         me[2][x - cooCount - colourCount] =  o.sliders.sliderList[x].value
         #print(me[x])
 
@@ -89,8 +91,8 @@ def LoadFaceModel():
 
     morphablemodel_with_expressions = ""
 
-    modelPath = baseLocation + "share/sfm_shape_3448.bin"
-    blendshapesPath = ""
+    modelPath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_blendshapes_with_colour.bin"
+    blendshapesPath = baseLocation + "share/expression_blendshapes_3448.bin"
 
     model = eos.morphablemodel.load_model(modelPath)
 
@@ -108,10 +110,10 @@ def LoadFaceModel():
 
     modelType = model.get_expression_model_type()
 
-    if(modelType == model.ExpressionModelType(0)):
+    if(modelType == model.ExpressionModelType(0) and blendshapesPath != ""):
 
-        print("I MADE IT HERE")
-        blendshapes = eos.morphablemodel.load_blendshapes(baseLocation + "share/expression_blendshapes_3448.bin")
+        #print("I MADE IT HERE")
+        blendshapes = eos.morphablemodel.load_blendshapes(blendshapesPath)
 
         print(blendshapes)
         
@@ -181,9 +183,9 @@ def CreateBaseShape():
 
 
 
-    print(obj.my_settings.ShapeCount)
-    print(obj.my_settings.ColourCount)
-    print(obj.my_settings.ExpressionCount)
+    #print(obj.my_settings.ShapeCount)
+    #print(obj.my_settings.ColourCount)
+    #print(obj.my_settings.ExpressionCount)
 
     if not obj.get('_RNA_UI'):
         obj['_RNA_UI'] = {}
@@ -294,10 +296,12 @@ class TEST_PT_Panel(bpy.types.Panel):
                     row = box.row()
                     row.label(text = "Colour: ")
                     row = box.row()
-                    cf = row.column_flow(columns = 3, align = False)            
-                    for x in range(cooCount,colourCount):             
+                    cf = row.column_flow(columns = 3, align = False) 
+                               
+                    for x in range(cooCount,cooCount + colourCount):  
 
                         k = "line_%d" % x   
+                        print(k)
                         cf.prop(obj.sliders.sliderList[x], "value")
                 
                 if(expreCount > 0):
