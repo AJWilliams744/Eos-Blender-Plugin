@@ -3,6 +3,8 @@ import eos
 import numpy as np
 import bmesh
 
+import random
+
 baseLocation = "D:/Users/Alex/Documents/Personal/Uni/Diss/WorkFolder/eos/out/install/x86-Debug/"
 maxSlider = 20
 
@@ -40,6 +42,68 @@ def getCoefficients(o):
 
     return me
 
+def refreshColours(mesh, coloursLocation, colours):
+
+    #print(colours)
+
+    if not mesh.vertex_colors:
+        mesh.vertex_colors.new()
+
+    colour_layer = mesh.vertex_colors['Col']
+
+    #print(colours)
+    #print(len(mesh.polygons))
+    #print(len(mesh.vertices))
+
+    i = 0
+    x = 0
+
+    ax = 0
+
+    for poly in mesh.polygons:
+
+        vertexLocation = coloursLocation[x]
+
+        for loop in poly.loop_indices:
+            color = [colours[vertexLocation[0]][0],colours[vertexLocation[1]][1],colours[vertexLocation[2]][2],1.0]
+            colour_layer.data[i].color = color
+            i += 1
+            pass
+        x += 1
+
+    return None
+
+def refreshColoursBM(mesh, coloursLocation, colours):
+
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+
+    if not bm.loops.layers.color:
+        bm.loops.layers.color.new("color")
+
+    colour_layer =  bm.loops.layers.color['color']
+
+    #print(colours)
+    #print(len(mesh.polygons))
+    #print(len(mesh.vertices))
+
+    i = 0
+    x = 0
+
+    for face in bm.faces:
+
+        vertexLocation = coloursLocation[x]
+
+        for loop in face.loop:
+            color = [colours[vertexLocation[0]][0],colours[vertexLocation[1]][1],colours[vertexLocation[2]][2],1.0]
+            colour_layer.data[i].color = color
+            i += 1
+            pass
+        x += 1
+
+    return None
+
+
 def refreshModel():
 
     #if aShapeKeeper.base == "": return
@@ -67,6 +131,8 @@ def refreshModel():
     faces = morphModel.tvi
 
     mesh.from_pydata(verts, edges, faces) 
+
+    refreshColoursBM(mesh, morphModel.tvi, morphModel.colors)
 
 def resize(self, context):
     refreshModel()
