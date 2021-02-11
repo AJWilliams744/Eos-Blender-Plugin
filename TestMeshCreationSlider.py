@@ -294,11 +294,11 @@ def loadFaceModel(modelPath, blendshapePath = ""):
     
     return morphablemodel_with_expressions
 
-def createBaseShape(FilePath):
+def createBaseShape(FilePath, blendShapePath = ""):
     
     obj = bpy.context.object
 
-    base = loadFaceModel(FilePath)
+    base = loadFaceModel(FilePath, blendShapePath)
 
     print(base)
 
@@ -381,10 +381,13 @@ class MySettings(bpy.types.PropertyGroup):
     IsReseting : bpy.props.BoolProperty(name = "Reseting Slidser", default = False)
 
     FilePath : bpy.props.StringProperty(name = "File Path:", subtype = "FILE_PATH")
+    BlendshapePath : bpy.props.StringProperty(name = "Blendshape Path:", subtype = "FILE_PATH")
+
     FileName : bpy.props.StringProperty(name = "File")
 
 class GlobalSettings(bpy.types.PropertyGroup):
     GlobalFilePath : bpy.props.StringProperty(subtype = "FILE_PATH")
+    GlobalBlendshapePath : bpy.props.StringProperty(name = "Blendshape Path:", subtype = "FILE_PATH")
 
 class SliderProp(bpy.types.PropertyGroup):
     value : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
@@ -410,7 +413,15 @@ class Create_New_Model(bpy.types.Operator):
             scene.global_setting.GlobalFilePath = ""
             return {'FINISHED'}
 
-        createBaseShape(scene.global_setting.GlobalFilePath)
+        blendshapePath = scene.global_setting.GlobalBlendshapePath
+
+        if(blendshapePath[-3:] != "bin" and not blendshapePath == "") :
+            self.report({"ERROR"}, "File not compatible")
+            scene.global_setting.GlobalBlendshapePath = ""
+            return {'FINISHED'}
+
+
+        createBaseShape(scene.global_setting.GlobalFilePath, blendshapePath)
         obj = context.object
 
         obj.my_settings.FilePath = scene.global_setting.GlobalFilePath
@@ -428,13 +439,16 @@ class Create_Copy_Model(bpy.types.Operator):
         obj = context.object
 
         filePath = obj.my_settings.FilePath
+        blendshapePath = obj.my_settings.BlendshapePath
 
-        createBaseShape(filePath)
+        createBaseShape(filePath, blendshapePath)
 
         obj = context.object #Grab the new object
 
         obj.my_settings.FilePath = filePath
         obj.my_settings.FileName = (filePath.split("\\")[-1])[:-4]
+
+        obj.my_settings.blendshapePath = blendshapePath
         
 
         return {'FINISHED'}
@@ -510,7 +524,7 @@ class Random_Sliders(bpy.types.Operator):
 
         for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount):             
 
-            if x < obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount:
+            if x < obj.my_settings.ShapeCount + obj.my_settings.ColourCount:
                 randomNum = (random.random() * 4) - 2
                 obj.sliders.sliderList[x].value = randomNum
             else:
@@ -543,6 +557,9 @@ class Main_PT_Panel(bpy.types.Panel):
 
         row = box.row()
         row.prop(scene.global_setting, "GlobalFilePath", text = "Model Path")
+
+        row = box.row()
+        row.prop(scene.global_setting, "GlobalBlendshapePath", text = "Blendshape Path")
         
         if(obj != None ):
             isInObjectMode = obj.mode == "OBJECT"   
