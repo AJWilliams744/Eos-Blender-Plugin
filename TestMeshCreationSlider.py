@@ -12,7 +12,8 @@ maxSlider = 20
 
 class ShapeKeeper(): # Create a dictionary with the path to model as key, model and value. check against mysetting property of locations 
     base = ""
-    path = ""
+    modelPath = ""
+    blendShapePath = ""
 
 class SliderType(Enum):
     Shape = 0
@@ -174,25 +175,38 @@ def refreshModel(sliderObj):
 
     #if aShapeKeeper.base == "": return
 
-    o = bpy.context.object
+    obj = bpy.context.object
 
-    if(o.my_settings.IsReseting): return 
+    scene = bpy.context.scene
 
-    shouldSmooth = o.my_settings.SmoothShader
+    if(obj.my_settings.IsReseting): return 
 
-    coofficient = getCoefficients(o)
+    shouldSmooth = obj.my_settings.SmoothShader
+
+    coofficient = getCoefficients(obj)
 
     if not(coofficient) : return
     
-    mesh = o.data
+    mesh = obj.data
 
     if not(aShapeKeeper.base):
-        loadFaceModel()
+        #loadFaceModel() # This would crash as there is no way of accesing the original file path
         return
+    
+    filePath = obj.my_settings.FilePath
+    blendshapePath = obj.my_settings.BlendshapePath
+
+    if(filePath == "" and blendshapePath == ""):
+        loadFaceModel(scene.global_setting.GlobalFilePath, scene.global_setting.GlobalBlendshapePath)
+    else:
+
+        if((filePath != aShapeKeeper.modelPath or blendshapePath != aShapeKeeper.blendShapePath) and aShapeKeeper.base != ""):
+            print("OTHER MODEL CHANGED")
+            loadFaceModel(filePath, blendshapePath)
 
     morphModel = aShapeKeeper.base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
 
-    if((sliderObj.sliderType == SliderType.Colour.value or not mesh.vertex_colors) and o.my_settings.ColourCount != 0):
+    if((sliderObj.sliderType == SliderType.Colour.value or not mesh.vertex_colors) and obj.my_settings.ColourCount != 0):
         refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth)
 
     else:       
@@ -207,12 +221,12 @@ def refreshModel(sliderObj):
 
         mesh.from_pydata(verts, edges, faces) 
         
-        if(o.my_settings.ColourCount == 0) :  
+        if(obj.my_settings.ColourCount == 0) :  
             smoothObject(mesh, shouldSmooth)
-            
+        else:
         #print(o.my_settings.ColourCount)
 
-        refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth)
+            refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth)
    
 def resize(self, context): 
     refreshModel(self)
@@ -261,15 +275,12 @@ def loadFaceModel(modelPath, blendshapePath = ""):
         #print("I MADE IT HERE")
         blendshapes = eos.morphablemodel.load_blendshapes(blendshapePath)
 
-        print(blendshapes)
+        #print(blendshapes)
         
         morphablemodel_with_expressions = eos.morphablemodel.MorphableModel(model.get_shape_model(), blendshapes,
                                                                         color_model=eos.morphablemodel.PcaModel(),
                                                                         vertex_definitions=None,
                                                                         texture_coordinates=model.get_texture_coordinates())
-
-
-
 
     #blendshapes = eos.morphablemodel.load_blendshapes(baseLocation + "share/expression_blendshapes_3448.bin")
 
@@ -287,24 +298,31 @@ def loadFaceModel(modelPath, blendshapePath = ""):
 
     aShapeKeeper.base = model
 
+    aShapeKeeper.modelPath = modelPath
+    aShapeKeeper.blendShapePath = blendshapePath
+
+   # print("OLD FILE PATH" + blendshapePath)
+
     if(morphablemodel_with_expressions != ""):
         aShapeKeeper.base = morphablemodel_with_expressions
     else:
        return model
+
+    
     
     return morphablemodel_with_expressions
 
 def createBaseShape(FilePath, blendShapePath = ""):
     
-    obj = bpy.context.object
-
     base = loadFaceModel(FilePath, blendShapePath)
 
-    print(base)
+    #print(base)
 
     secondMesh = base.draw_sample([0,0,0],[0,0,0])
 
     obj = createBlenderMesh(secondMesh)
+
+    #obj.my_settings.IsReseting = True
 
     modelType = base.get_expression_model_type()
 
@@ -326,7 +344,7 @@ def createBaseShape(FilePath, blendShapePath = ""):
         obj.my_settings.ShapeCount = base.get_shape_model().get_num_principal_components()
         obj.my_settings.ColourCount = base.get_color_model().get_num_principal_components()
 
-    print(obj.my_settings.ColourCount)
+    #print(obj.my_settings.ColourCount)
     if(obj.my_settings.ColourCount != 0): setMaterial(obj)
 
     #print(obj.my_settings.ShapeCount)
@@ -356,6 +374,9 @@ def createBaseShape(FilePath, blendShapePath = ""):
    
 
     #print(aShapeKeeper.base)
+    #obj.my_settings.IsReseting = False
+
+    #obj.sliders.sliderList[0].value = 0.0 #Trigger an inital refesh
 
     return base
 
@@ -427,6 +448,10 @@ class Create_New_Model(bpy.types.Operator):
         obj.my_settings.FilePath = scene.global_setting.GlobalFilePath
         obj.my_settings.FileName = (scene.global_setting.GlobalFilePath.split("\\")[-1])[:-4]
 
+        obj.my_settings.BlendshapePath = blendshapePath
+
+        obj.scale = (0.03, 0.03, 0.03)
+
         return {'FINISHED'}
 
 class Create_Copy_Model(bpy.types.Operator):
@@ -441,6 +466,8 @@ class Create_Copy_Model(bpy.types.Operator):
         filePath = obj.my_settings.FilePath
         blendshapePath = obj.my_settings.BlendshapePath
 
+        #print("FILE PATH" + blendshapePath)
+
         createBaseShape(filePath, blendshapePath)
 
         obj = context.object #Grab the new object
@@ -448,7 +475,8 @@ class Create_Copy_Model(bpy.types.Operator):
         obj.my_settings.FilePath = filePath
         obj.my_settings.FileName = (filePath.split("\\")[-1])[:-4]
 
-        obj.my_settings.blendshapePath = blendshapePath
+        obj.my_settings.BlendshapePath = blendshapePath
+        obj.scale = (0.03, 0.03, 0.03)
         
 
         return {'FINISHED'}
@@ -580,7 +608,11 @@ class Main_PT_Panel(bpy.types.Panel):
 
                 shapeCount = obj.my_settings.ShapeCount
                 colourCount = obj.my_settings.ColourCount
-                expressionCount = obj.my_settings.ExpressionCount    
+                expressionCount = obj.my_settings.ExpressionCount   
+
+                row = box.row()
+                row.prop(obj.my_settings, "SmoothShader")
+                row.enabled = isInObjectMode     
 
                 if(shapeCount > 0 or colourCount > 0 or expressionCount > 0):
 
@@ -591,6 +623,14 @@ class Main_PT_Panel(bpy.types.Panel):
                     row = box.row()
                     row.prop(obj.my_settings, "FileName")
                     row.enabled = False
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "FilePath")
+                    row.enabled = False
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "BlendshapePath")
+                    row.enabled = False
                     
                     row = box.row()
                     row.operator('view3d.random_sliders')
@@ -598,11 +638,8 @@ class Main_PT_Panel(bpy.types.Panel):
 
                     row = box.row()
                     row.operator('view3d.reset_sliders')
-                    row.enabled = isInObjectMode
-                    
-                    row = box.row()
-                    row.prop(obj.my_settings, "SmoothShader")
-                    row.enabled = isInObjectMode       
+                    row.enabled = isInObjectMode                   
+                       
 
                 #row = box.row()
                 #row.prop(obj.my_settings, "reverse")
