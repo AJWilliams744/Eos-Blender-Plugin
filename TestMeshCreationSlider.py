@@ -114,15 +114,15 @@ def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth):
 
     return None
 
-def CreateVertexMaterial():
+def createVertexMaterial():
 
     mat = bpy.data.materials.new(name = "VertexColourMat")
 
-    RefreshVertexMaterial(mat)
+    refreshVertexMaterial(mat)
 
     return mat
 
-def RefreshVertexMaterial(mat):
+def refreshVertexMaterial(mat):
 
     #bpy.data.node_groups.clear()
     mat.use_nodes = True
@@ -143,13 +143,13 @@ def RefreshVertexMaterial(mat):
     links.new(diffuse.outputs["BSDF"], output.inputs["Surface"])
     links.new(vertexColour.outputs["Color"], diffuse.inputs["Color"])
 
-def SetMaterial(obj):
+def setMaterial(obj):
     mat = bpy.data.materials.get("VertexColourMat")
 
     if(mat is None):
-        mat = CreateVertexMaterial()
+        mat = createVertexMaterial()
     else:
-        RefreshVertexMaterial(mat)
+        refreshVertexMaterial(mat)
         
     
     if(not obj.data.materials):
@@ -158,15 +158,15 @@ def SetMaterial(obj):
 
     return
 
-def SmoothObject(mesh, shouldSmooth):
+def smoothObject(mesh, shouldSmooth):
     for f in mesh.polygons:
         f.use_smooth = shouldSmooth          
     return
 
-def ChangedSmooth(self, context):
+def changedSmooth(self, context):
     obj = bpy.context.object
     mesh = obj.data
-    SmoothObject(mesh, obj.my_settings.SmoothShader)
+    smoothObject(mesh, obj.my_settings.SmoothShader)
     pass
 
 def refreshModel(sliderObj):
@@ -186,7 +186,7 @@ def refreshModel(sliderObj):
     mesh = o.data
 
     if not(aShapeKeeper.base):
-        LoadFaceModel()
+        loadFaceModel()
         return
 
     morphModel = aShapeKeeper.base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
@@ -207,7 +207,7 @@ def refreshModel(sliderObj):
         mesh.from_pydata(verts, edges, faces) 
         
         if(o.my_settings.ColourCount == 0) :  
-            SmoothObject(mesh, shouldSmooth)
+            smoothObject(mesh, shouldSmooth)
             
         #print(o.my_settings.ColourCount)
 
@@ -217,7 +217,7 @@ def resize(self, context):
     refreshModel(self)
     return
 
-def CreateBlenderMesh(mesh):
+def createBlenderMesh(mesh):
     blendObj = bpy.data.meshes.new("Morphable Object")  # add the new mesh    
     obj = bpy.data.objects.new(blendObj.name, blendObj)
     col = bpy.data.collections.get("Collection")
@@ -232,7 +232,7 @@ def CreateBlenderMesh(mesh):
 
     return obj
 
-def LoadFaceModel():
+def loadFaceModel():
 
     morphablemodel_with_expressions = ""
 
@@ -293,15 +293,15 @@ def LoadFaceModel():
     
     return morphablemodel_with_expressions
 
-def CreateBaseShape():
+def createBaseShape():
     
-    base = LoadFaceModel()
+    base = loadFaceModel()
 
     print(base)
 
     secondMesh = base.draw_sample([0,0,0],[0,0,0])
 
-    obj = CreateBlenderMesh(secondMesh)
+    obj = createBlenderMesh(secondMesh)
 
     modelType = base.get_expression_model_type()
 
@@ -324,7 +324,7 @@ def CreateBaseShape():
         obj.my_settings.ColourCount = base.get_color_model().get_num_principal_components()
 
     print(obj.my_settings.ColourCount)
-    if(obj.my_settings.ColourCount != 0): SetMaterial(obj)
+    if(obj.my_settings.ColourCount != 0): setMaterial(obj)
 
     #print(obj.my_settings.ShapeCount)
     #print(obj.my_settings.ColourCount)
@@ -356,7 +356,7 @@ def CreateBaseShape():
 
     return base
 
-def GetLabelText(showMore, sliderCount):
+def getLabelText(showMore, sliderCount):
 
     if(sliderCount < maxSlider): return ""
     
@@ -374,7 +374,7 @@ class MySettings(bpy.types.PropertyGroup):
     ShapeShowMore : bpy.props.BoolProperty(name = "ShapeShowMore", description = "Should I show more", default = False)
     ExpressionShowMore : bpy.props.BoolProperty(name = "ExpressionShowMore", description = "Should I show more", default = False)
 
-    SmoothShader : bpy.props.BoolProperty(name = "Smooth Shading", description  = "Should I smooth shade", default = False, update = ChangedSmooth)
+    SmoothShader : bpy.props.BoolProperty(name = "Smooth Shading", description  = "Should I smooth shade", default = False, update = changedSmooth)
     isReseting : bpy.props.BoolProperty(name = "Reseting Slidser", default = False)
 
 class SliderProp(bpy.types.PropertyGroup):
@@ -392,7 +392,7 @@ class Create_Model(bpy.types.Operator):
 
     def execute(self, context):
 
-        CreateBaseShape()
+        createBaseShape()
 
         return {'FINISHED'}
 
@@ -540,7 +540,7 @@ class Main_Panel(bpy.types.Panel):
                     row.label(text = "Shape: ")
                     row = box.row()           
 
-                    labelText = GetLabelText(obj.my_settings.ShapeShowMore, shapeCount)
+                    labelText = getLabelText(obj.my_settings.ShapeShowMore, shapeCount)
 
                     showMoreCount = 0
                     if(obj.my_settings.ShapeShowMore): showMoreCount = shapeCount - maxSlider
@@ -566,7 +566,7 @@ class Main_Panel(bpy.types.Panel):
                     row.label(text = "Colour: ")
                     row = box.row()
 
-                    labelText = GetLabelText(obj.my_settings.ColourShowMore, colourCount)
+                    labelText = getLabelText(obj.my_settings.ColourShowMore, colourCount)
 
                     showMoreCount = 0
                     if(obj.my_settings.ColourShowMore): showMoreCount = colourCount + shapeCount - maxSlider
@@ -593,7 +593,7 @@ class Main_Panel(bpy.types.Panel):
                     row.label(text = "Expression: ")
                     row = box.row()
 
-                    labelText = GetLabelText(obj.my_settings.ExpressionShowMore, expressionCount)
+                    labelText = getLabelText(obj.my_settings.ExpressionShowMore, expressionCount)
 
                     if(labelText != ""):
                         row = box.row()
