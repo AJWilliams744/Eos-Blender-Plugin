@@ -3,6 +3,7 @@ import eos
 import numpy as np
 import bmesh
 from enum import Enum
+import random
 
 import random
 
@@ -454,6 +455,31 @@ class Reset_Sliders(bpy.types.Operator):
 
         return {'FINISHED'}
 
+class Random_Sliders(bpy.types.Operator):
+    bl_idname = "view3d.random_sliders"
+    bl_label = "Randomizes all the sliders"
+    bl_destription = "A button to radomize all the sliders"
+
+    def execute(self, context):
+
+        obj = context.object
+        obj.my_settings.isReseting = True # Stop the update being called during change
+
+        for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount):             
+
+            if x < obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount:
+                randomNum = (random.random() * 6) - 3
+                obj.sliders.sliderList[x].value = randomNum
+            else:
+                randomNum = (random.random() * 0.5) - 0.1
+                obj.sliders.sliderList[x].value = randomNum
+                
+        obj.my_settings.isReseting = False
+
+        obj.sliders.sliderList[0].value = (random.random() * 2) - 1 #Trigger the refresh
+
+        return {'FINISHED'}
+
 class Main_Panel(bpy.types.Panel):
     bl_idname = "Morph_Panel"
     bl_label = "Morph Panel"
@@ -492,6 +518,10 @@ class Main_Panel(bpy.types.Panel):
                 expressionCount = obj.my_settings.ExpressionCount    
 
                 if(shapeCount > 0 or colourCount > 0 or expressionCount > 0):
+                    
+                    row = box.row()
+                    row.operator('view3d.random_sliders')
+                    row.enabled = isInObjectMode
 
                     row = box.row()
                     row.operator('view3d.reset_sliders')
@@ -593,7 +623,8 @@ classes = (
     Show_More_Colour,
     Show_More_Shape,
     Show_More_Expression,
-    Reset_Sliders
+    Reset_Sliders,
+    Random_Sliders
         )
 
 def register():
