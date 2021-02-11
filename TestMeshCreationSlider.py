@@ -21,29 +21,29 @@ aShapeKeeper = ShapeKeeper()
 
 def getCoefficients(o):
 
-    cooCount = o.my_settings.ShapeCount
+    shapeCount = o.my_settings.ShapeCount
     colourCount = o.my_settings.ColourCount
-    expreCount = o.my_settings.ExpressionCount
+    expressionCount = o.my_settings.ExpressionCount
 
-    if len(o.sliders.sliderList) < cooCount + colourCount + expreCount : return
+    if len(o.sliders.sliderList) < shapeCount + colourCount + expressionCount : return
 
-    me = [[0.0]* cooCount, [0.0]* colourCount, [0.0]* expreCount]
+    me = [[0.0]* shapeCount, [0.0]* colourCount, [0.0]* expressionCount]
 
-    for x in range(0,cooCount):            
+    for x in range(0,shapeCount):            
 
         me[0][x] =  o.sliders.sliderList[x].value
        # print(me[x])
 
     
-    for x in range(cooCount,cooCount + colourCount):           
+    for x in range(shapeCount,shapeCount + colourCount):           
         #print(x)
-        me[1][x - cooCount] =  o.sliders.sliderList[x].value
+        me[1][x - shapeCount] =  o.sliders.sliderList[x].value
         #print(me[x])
 
     #print("-------------------------------------------")
-    for x in range(cooCount + colourCount,cooCount + colourCount + expreCount):            
+    for x in range(shapeCount + colourCount,shapeCount + colourCount + expressionCount):            
         #print(x)
-        me[2][x - cooCount - colourCount] =  o.sliders.sliderList[x].value
+        me[2][x - shapeCount - colourCount] =  o.sliders.sliderList[x].value
         #print(me[x])
 
     return me
@@ -217,7 +217,7 @@ def resize(self, context):
     return
 
 def CreateBlenderMesh(mesh):
-    blendObj = bpy.data.meshes.new("aNewMesh")  # add the new mesh    
+    blendObj = bpy.data.meshes.new("Morphable Object")  # add the new mesh    
     obj = bpy.data.objects.new(blendObj.name, blendObj)
     col = bpy.data.collections.get("Collection")
     col.objects.link(obj)
@@ -454,10 +454,10 @@ class Reset_Sliders(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class TEST_PT_Panel(bpy.types.Panel):
-    bl_idname = "TEST_PT_Panel"
-    bl_label = "Test Panel"
-    bl_category = "Test Addon"
+class Main_Panel(bpy.types.Panel):
+    bl_idname = "Morph_Panel"
+    bl_label = "Morph Panel"
+    bl_category = "Morph Addon"
     bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
 
@@ -487,11 +487,11 @@ class TEST_PT_Panel(bpy.types.Panel):
                 row = box.row()
                 row.label(text = "Object: " + obj.name)
 
-                cooCount = obj.my_settings.ShapeCount
+                shapeCount = obj.my_settings.ShapeCount
                 colourCount = obj.my_settings.ColourCount
-                expreCount = obj.my_settings.ExpressionCount    
+                expressionCount = obj.my_settings.ExpressionCount    
 
-                if(cooCount > 0 or colourCount > 0 or expreCount > 0):
+                if(shapeCount > 0 or colourCount > 0 or expressionCount > 0):
 
                     row = box.row()
                     row.operator('view3d.reset_sliders')
@@ -504,16 +504,16 @@ class TEST_PT_Panel(bpy.types.Panel):
                 #row = box.row()
                 #row.prop(obj.my_settings, "reverse")
 
-                if(cooCount > 0):
+                if(shapeCount > 0):
 
                     row = box.row()
                     row.label(text = "Shape: ")
                     row = box.row()           
 
-                    labelText = GetLabelText(obj.my_settings.ShapeShowMore, cooCount)
+                    labelText = GetLabelText(obj.my_settings.ShapeShowMore, shapeCount)
 
                     showMoreCount = 0
-                    if(obj.my_settings.ShapeShowMore): showMoreCount = cooCount - maxSlider
+                    if(obj.my_settings.ShapeShowMore): showMoreCount = shapeCount - maxSlider
 
                     if(labelText != ""):
                         row = box.row()
@@ -525,7 +525,7 @@ class TEST_PT_Panel(bpy.types.Panel):
                     
                     cf = row.grid_flow(row_major = True, columns = 3, align = False)        
                     row.enabled = isInObjectMode    
-                    for x in range(0,cooCount):             
+                    for x in range(0,shapeCount):             
                         if x > maxSlider + showMoreCount: break
                         k = "line_%d" % x   
                         cf.prop(obj.sliders.sliderList[x], "value", text = str(x)+ ":")
@@ -539,7 +539,7 @@ class TEST_PT_Panel(bpy.types.Panel):
                     labelText = GetLabelText(obj.my_settings.ColourShowMore, colourCount)
 
                     showMoreCount = 0
-                    if(obj.my_settings.ColourShowMore): showMoreCount = colourCount + cooCount - maxSlider
+                    if(obj.my_settings.ColourShowMore): showMoreCount = colourCount + shapeCount - maxSlider
 
                     if(labelText != ""):
                         row = box.row()
@@ -551,19 +551,19 @@ class TEST_PT_Panel(bpy.types.Panel):
                     cf = row.grid_flow(row_major = True, columns = 3, align = False)    
                     row.enabled = isInObjectMode                 
                                
-                    for x in range(cooCount,cooCount + colourCount):  
-                        if(x - cooCount) > maxSlider + showMoreCount : break
+                    for x in range(shapeCount,shapeCount + colourCount):  
+                        if(x - shapeCount) > maxSlider + showMoreCount : break
                         k = "line_%d" % x   
                         #print(k)
-                        cf.prop(obj.sliders.sliderList[x], "value", text = str(x - cooCount)+ ":")
+                        cf.prop(obj.sliders.sliderList[x], "value", text = str(x - shapeCount)+ ":")
                 
-                if(expreCount > 0):
+                if(expressionCount > 0):
 
                     row = box.row()
                     row.label(text = "Expression: ")
                     row = box.row()
 
-                    labelText = GetLabelText(obj.my_settings.ExpressionShowMore, expreCount)
+                    labelText = GetLabelText(obj.my_settings.ExpressionShowMore, expressionCount)
 
                     if(labelText != ""):
                         row = box.row()
@@ -576,16 +576,16 @@ class TEST_PT_Panel(bpy.types.Panel):
 
                     showMoreCount = 0
 
-                    if(obj.my_settings.ExpressionShowMore): showMoreCount = cooCount + colourCount + expreCount - maxSlider
+                    if(obj.my_settings.ExpressionShowMore): showMoreCount = shapeCount + colourCount + expressionCount - maxSlider
 
-                    for x in range(cooCount + colourCount, cooCount + colourCount + expreCount):             
-                        if( x - cooCount - colourCount > maxSlider + showMoreCount) : break
+                    for x in range(shapeCount + colourCount, shapeCount + colourCount + expressionCount):             
+                        if( x - shapeCount - colourCount > maxSlider + showMoreCount) : break
                         k = "line_%d" % x    
                         #cf.prop(obj, '["' + k + '"]')
-                        cf.prop(obj.sliders.sliderList[x], "value", text = str(x - cooCount - colourCount) + ":") 
+                        cf.prop(obj.sliders.sliderList[x], "value", text = str(x - shapeCount - colourCount) + ":") 
 
 classes = (
-    TEST_PT_Panel,
+    Main_Panel,
     Create_Model,
     MySettings,
     SliderProp,
