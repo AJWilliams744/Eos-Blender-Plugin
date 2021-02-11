@@ -12,6 +12,7 @@ maxSlider = 20
 
 class ShapeKeeper(): # Create a dictionary with the path to model as key, model and value. check against mysetting property of locations 
     base = ""
+    path = ""
 
 class SliderType(Enum):
     Shape = 0
@@ -175,7 +176,7 @@ def refreshModel(sliderObj):
 
     o = bpy.context.object
 
-    if(o.my_settings.isReseting): return 
+    if(o.my_settings.IsReseting): return 
 
     shouldSmooth = o.my_settings.SmoothShader
 
@@ -232,12 +233,12 @@ def createBlenderMesh(mesh):
 
     return obj
 
-def loadFaceModel():
+def loadFaceModel(modelPath, blendshapePath = ""):
 
     morphablemodel_with_expressions = ""
 
-    modelPath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_blendshapes_with_colour.bin"
-    blendshapesPath = baseLocation + "share/expression_blendshapes_3448.bin"
+    #modelPath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_blendshapes_with_colour.bin"
+    #blendshapesPath = baseLocation + "share/expression_blendshapes_3448.bin"
 
     model = eos.morphablemodel.load_model(modelPath)
 
@@ -255,10 +256,10 @@ def loadFaceModel():
 
     modelType = model.get_expression_model_type()
 
-    if(modelType == model.ExpressionModelType(0) and blendshapesPath != ""):
+    if(modelType == model.ExpressionModelType(0) and blendshapePath != ""):
 
         #print("I MADE IT HERE")
-        blendshapes = eos.morphablemodel.load_blendshapes(blendshapesPath)
+        blendshapes = eos.morphablemodel.load_blendshapes(blendshapePath)
 
         print(blendshapes)
         
@@ -293,9 +294,11 @@ def loadFaceModel():
     
     return morphablemodel_with_expressions
 
-def createBaseShape():
+def createBaseShape(FilePath):
     
-    base = loadFaceModel()
+    obj = bpy.context.object
+
+    base = loadFaceModel(FilePath)
 
     print(base)
 
@@ -375,7 +378,13 @@ class MySettings(bpy.types.PropertyGroup):
     ExpressionShowMore : bpy.props.BoolProperty(name = "ExpressionShowMore", description = "Should I show more", default = False)
 
     SmoothShader : bpy.props.BoolProperty(name = "Smooth Shading", description  = "Should I smooth shade", default = False, update = changedSmooth)
-    isReseting : bpy.props.BoolProperty(name = "Reseting Slidser", default = False)
+    IsReseting : bpy.props.BoolProperty(name = "Reseting Slidser", default = False)
+
+    FilePath : bpy.props.StringProperty(name = "File Path:", subtype = "FILE_PATH")
+    FileName : bpy.props.StringProperty(name = "File")
+
+class GlobalSettings(bpy.types.PropertyGroup):
+    GlobalFilePath : bpy.props.StringProperty(subtype = "FILE_PATH")
 
 class SliderProp(bpy.types.PropertyGroup):
     value : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
@@ -385,14 +394,48 @@ class SliderProp(bpy.types.PropertyGroup):
 class SliderList(bpy.types.PropertyGroup):
     sliderList : bpy.props.CollectionProperty(type=SliderProp)
 
-class Create_Model(bpy.types.Operator):
-    bl_idname = "view3d.create_model"
-    bl_label = "Create Model"
+class Create_New_Model(bpy.types.Operator):
+    bl_idname = "view3d.create_new_model"
+    bl_label = "Create New Model"
     bl_destription = "A button to create a new morphable face"
 
     def execute(self, context):
 
-        createBaseShape()
+        scene = context.scene
+        
+
+        #print(scene.global_setting.GlobalFilePath[-3:])
+        if(scene.global_setting.GlobalFilePath[-3:] != "bin") :
+            self.report({"ERROR"}, "File not compatible")
+            scene.global_setting.GlobalFilePath = ""
+            return {'FINISHED'}
+
+        createBaseShape(scene.global_setting.GlobalFilePath)
+        obj = context.object
+
+        obj.my_settings.FilePath = scene.global_setting.GlobalFilePath
+        obj.my_settings.FileName = (scene.global_setting.GlobalFilePath.split("\\")[-1])[:-4]
+
+        return {'FINISHED'}
+
+class Create_Copy_Model(bpy.types.Operator):
+    bl_idname = "view3d.create_copy_model"
+    bl_label = "Create Copy Model"
+    bl_destription = "A button to create a new morphable face"
+
+    def execute(self, context):
+
+        obj = context.object
+
+        filePath = obj.my_settings.FilePath
+
+        createBaseShape(filePath)
+
+        obj = context.object #Grab the new object
+
+        obj.my_settings.FilePath = filePath
+        obj.my_settings.FileName = (filePath.split("\\")[-1])[:-4]
+        
 
         return {'FINISHED'}
 
@@ -443,13 +486,13 @@ class Reset_Sliders(bpy.types.Operator):
     def execute(self, context):
 
         obj = context.object
-        obj.my_settings.isReseting = True # Stop the update being called during change
+        obj.my_settings.IsReseting = True # Stop the update being called during change
 
         for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount): 
 
             obj.sliders.sliderList[x].value = 0.0
 
-        obj.my_settings.isReseting = False
+        obj.my_settings.IsReseting = False
 
         obj.sliders.sliderList[0].value = 0.0 #Trigger the refresh
 
@@ -463,7 +506,7 @@ class Random_Sliders(bpy.types.Operator):
     def execute(self, context):
 
         obj = context.object
-        obj.my_settings.isReseting = True # Stop the update being called during change
+        obj.my_settings.IsReseting = True # Stop the update being called during change
 
         for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount):             
 
@@ -474,14 +517,14 @@ class Random_Sliders(bpy.types.Operator):
                 randomNum = (random.random() * 0.5) - 0.1
                 obj.sliders.sliderList[x].value = randomNum
                 
-        obj.my_settings.isReseting = False
+        obj.my_settings.IsReseting = False
 
         obj.sliders.sliderList[0].value = (random.random() * 2) - 1 #Trigger the refresh
 
         return {'FINISHED'}
 
-class Main_Panel(bpy.types.Panel):
-    bl_idname = "Morph_Panel"
+class Main_PT_Panel(bpy.types.Panel):
+    bl_idname = "MORPH_PT_Panel"
     bl_label = "Morph Panel"
     bl_category = "Morph Addon"
     bl_space_type = "VIEW_3D"
@@ -489,18 +532,23 @@ class Main_Panel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
-        #scene = context.scene
+        scene = context.scene
         obj = context.object
         box = layout.box()  
 
         isInObjectMode = True
+
+        row = box.row()
+        row.operator('view3d.create_new_model')  
+
+        row = box.row()
+        row.prop(scene.global_setting, "GlobalFilePath", text = "Model Path")
         
         if(obj != None ):
             isInObjectMode = obj.mode == "OBJECT"   
 
         row = box.row()
-        row.operator('view3d.create_model')  
-        row.enabled = isInObjectMode
+       # row.label(text = "----------------------------------------------------------------------------------------------")
 
         if(obj != None):
 
@@ -518,6 +566,14 @@ class Main_Panel(bpy.types.Panel):
                 expressionCount = obj.my_settings.ExpressionCount    
 
                 if(shapeCount > 0 or colourCount > 0 or expressionCount > 0):
+
+                    row = box.row()
+                    row.operator('view3d.create_copy_model')  
+                    row.enabled = isInObjectMode
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "FileName")
+                    row.enabled = False
                     
                     row = box.row()
                     row.operator('view3d.random_sliders')
@@ -615,8 +671,9 @@ class Main_Panel(bpy.types.Panel):
                         cf.prop(obj.sliders.sliderList[x], "value", text = str(x - shapeCount - colourCount) + ":") 
 
 classes = (
-    Main_Panel,
-    Create_Model,
+    Main_PT_Panel,
+    Create_New_Model,
+    Create_Copy_Model,
     MySettings,
     SliderProp,
     SliderList,
@@ -624,7 +681,8 @@ classes = (
     Show_More_Shape,
     Show_More_Expression,
     Reset_Sliders,
-    Random_Sliders
+    Random_Sliders,
+    GlobalSettings
         )
 
 def register():
@@ -634,6 +692,7 @@ def register():
 
     bpy.types.Object.my_settings = bpy.props.PointerProperty(type=MySettings)
     bpy.types.Object.sliders = bpy.props.PointerProperty(type=SliderList)
+    bpy.types.Scene.global_setting = bpy.props.PointerProperty(type=GlobalSettings)
 
 def unregister():
     from bpy.utils import unregister_class
