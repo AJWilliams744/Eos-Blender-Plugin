@@ -101,8 +101,9 @@ def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth):
         vertexLocation = coloursLocation[x]
         face.smooth = shouldSmooth
 
+        i = 0
         for loop in face.loops:
-            color = [colours[vertexLocation[0]][0],colours[vertexLocation[1]][1],colours[vertexLocation[2]][2],1.0]
+            color = [colours[vertexLocation[i]][0],colours[vertexLocation[i]][1],colours[vertexLocation[i]][2],1.0]
             loop[colour_layer] = color
             i += 1
            
