@@ -174,6 +174,8 @@ def refreshModel(sliderObj):
 
     o = bpy.context.object
 
+    if(o.my_settings.isReseting): return 
+
     shouldSmooth = o.my_settings.SmoothShader
 
     coofficient = getCoefficients(o)
@@ -372,6 +374,7 @@ class MySettings(bpy.types.PropertyGroup):
     ExpressionShowMore : bpy.props.BoolProperty(name = "ExpressionShowMore", description = "Should I show more", default = False)
 
     SmoothShader : bpy.props.BoolProperty(name = "Smooth Shading", description  = "Should I smooth shade", default = False, update = ChangedSmooth)
+    isReseting : bpy.props.BoolProperty(name = "Reseting Slidser", default = False)
 
 class SliderProp(bpy.types.PropertyGroup):
     value : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
@@ -431,6 +434,26 @@ class Show_More_Expression(bpy.types.Operator):
 
         return {'FINISHED'}
 
+class Reset_Sliders(bpy.types.Operator):
+    bl_idname = "view3d.reset_sliders"
+    bl_label = "Resets all the sliders to zero"
+    bl_destription = "A button to reset all the sliders"
+
+    def execute(self, context):
+
+        obj = context.object
+        obj.my_settings.isReseting = True # Stop the update being called during change
+
+        for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount): 
+
+            obj.sliders.sliderList[x].value = 0.0
+
+        obj.my_settings.isReseting = False
+
+        obj.sliders.sliderList[0].value = 0.0 #Trigger the refresh
+
+        return {'FINISHED'}
+
 class TEST_PT_Panel(bpy.types.Panel):
     bl_idname = "TEST_PT_Panel"
     bl_label = "Test Panel"
@@ -464,13 +487,19 @@ class TEST_PT_Panel(bpy.types.Panel):
                 row = box.row()
                 row.label(text = "Object: " + obj.name)
 
-                row = box.row()
-                row.prop(obj.my_settings, "SmoothShader")
-                row.enabled = isInObjectMode
-
                 cooCount = obj.my_settings.ShapeCount
                 colourCount = obj.my_settings.ColourCount
-                expreCount = obj.my_settings.ExpressionCount           
+                expreCount = obj.my_settings.ExpressionCount    
+
+                if(cooCount > 0 or colourCount > 0 or expreCount > 0):
+
+                    row = box.row()
+                    row.operator('view3d.reset_sliders')
+                    row.enabled = isInObjectMode
+                    
+                    row = box.row()
+                    row.prop(obj.my_settings, "SmoothShader")
+                    row.enabled = isInObjectMode       
 
                 #row = box.row()
                 #row.prop(obj.my_settings, "reverse")
@@ -563,7 +592,8 @@ classes = (
     SliderList,
     Show_More_Colour,
     Show_More_Shape,
-    Show_More_Expression
+    Show_More_Expression,
+    Reset_Sliders
         )
 
 def register():
