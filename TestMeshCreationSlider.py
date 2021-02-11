@@ -79,7 +79,7 @@ def refreshColours(mesh, coloursLocation, colours):
 
     return None
 
-def refreshColoursBM(mesh, coloursLocation, colours):
+def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth):
 
     bm = bmesh.new()
     bm.from_mesh(mesh)
@@ -99,6 +99,7 @@ def refreshColoursBM(mesh, coloursLocation, colours):
     for face in bm.faces:
 
         vertexLocation = coloursLocation[x]
+        face.smooth = shouldSmooth
 
         for loop in face.loops:
             color = [colours[vertexLocation[0]][0],colours[vertexLocation[1]][1],colours[vertexLocation[2]][2],1.0]
@@ -155,11 +156,24 @@ def SetMaterial(obj):
 
     return
 
+def SmoothObject(mesh, shouldSmooth):
+    for f in mesh.polygons:
+        f.use_smooth = shouldSmooth          
+    return
+
+def ChangedSmooth(self, context):
+    obj = bpy.context.object
+    mesh = obj.data
+    SmoothObject(mesh, obj.my_settings.SmoothShader)
+    pass
+
 def refreshModel(sliderObj):
 
     #if aShapeKeeper.base == "": return
 
     o = bpy.context.object
+
+    shouldSmooth = o.my_settings.SmoothShader
 
     coofficient = getCoefficients(o)
 
@@ -173,8 +187,8 @@ def refreshModel(sliderObj):
 
     morphModel = aShapeKeeper.base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
 
-    if(sliderObj.sliderType == SliderType.Colour.value or not mesh.vertex_colors):
-        refreshColoursBM(mesh, morphModel.tci, morphModel.colors)
+    if((sliderObj.sliderType == SliderType.Colour.value or not mesh.vertex_colors) and o.my_settings.ColourCount != 0):
+        refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth)
 
     else:       
 
@@ -188,10 +202,13 @@ def refreshModel(sliderObj):
 
         mesh.from_pydata(verts, edges, faces) 
         
-        if(o.my_settings.ColourCount == 0) : return
+        if(o.my_settings.ColourCount == 0) :  
+            SmoothObject(mesh, shouldSmooth)
+            
+        #print(o.my_settings.ColourCount)
 
-        refreshColoursBM(mesh, morphModel.tci, morphModel.colors)
-    
+        refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth)
+   
 def resize(self, context): 
     refreshModel(self)
     return
@@ -215,8 +232,8 @@ def LoadFaceModel():
 
     morphablemodel_with_expressions = ""
 
-    modelPath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_with_colour.bin"
-    blendshapesPath = ""
+    modelPath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_blendshapes_with_colour.bin"
+    blendshapesPath = baseLocation + "share/expression_blendshapes_3448.bin"
 
     model = eos.morphablemodel.load_model(modelPath)
 
@@ -353,6 +370,8 @@ class MySettings(bpy.types.PropertyGroup):
     ShapeShowMore : bpy.props.BoolProperty(name = "ShapeShowMore", description = "Should I show more", default = False)
     ExpressionShowMore : bpy.props.BoolProperty(name = "ExpressionShowMore", description = "Should I show more", default = False)
 
+    SmoothShader : bpy.props.BoolProperty(name = "Smooth Shading", description  = "Should I smooth shade", default = False, update = ChangedSmooth)
+
 class SliderProp(bpy.types.PropertyGroup):
     value : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
     #sliderType : bpy.props.EnumProperty(name = "SliderType", items = [("0", "Shape",""), ("1", "Expression",""), ("2", "Colour","")], default = "None")
@@ -444,6 +463,10 @@ class TEST_PT_Panel(bpy.types.Panel):
                 row = box.row()
                 row.label(text = "Object: " + obj.name)
 
+                row = box.row()
+                row.prop(obj.my_settings, "SmoothShader")
+                row.enabled = isInObjectMode
+
                 cooCount = obj.my_settings.ShapeCount
                 colourCount = obj.my_settings.ColourCount
                 expreCount = obj.my_settings.ExpressionCount           
@@ -454,7 +477,7 @@ class TEST_PT_Panel(bpy.types.Panel):
                 if(cooCount > 0):
 
                     row = box.row()
-                    row.label(text = "Shape")
+                    row.label(text = "Shape: ")
                     row = box.row()           
 
                     labelText = GetLabelText(obj.my_settings.ShapeShowMore, cooCount)
@@ -530,7 +553,6 @@ class TEST_PT_Panel(bpy.types.Panel):
                         k = "line_%d" % x    
                         #cf.prop(obj, '["' + k + '"]')
                         cf.prop(obj.sliders.sliderList[x], "value", text = str(x - cooCount - colourCount) + ":") 
-
 
 classes = (
     TEST_PT_Panel,
