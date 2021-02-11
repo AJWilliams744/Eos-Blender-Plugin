@@ -468,7 +468,7 @@ class Random_Sliders(bpy.types.Operator):
         for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount):             
 
             if x < obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount:
-                randomNum = (random.random() * 6) - 3
+                randomNum = (random.random() * 4) - 2
                 obj.sliders.sliderList[x].value = randomNum
             else:
                 randomNum = (random.random() * 0.5) - 0.1
