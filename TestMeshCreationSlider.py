@@ -2,6 +2,7 @@ import bpy
 import eos
 import numpy as np
 import bmesh
+from enum import Enum
 
 import random
 
@@ -10,6 +11,11 @@ maxSlider = 20
 
 class ShapeKeeper(): # Create a dictionary with the path to model as key, model and value. check against mysetting property of locations 
     base = ""
+
+class SliderType(Enum):
+    Shape = 0
+    Colour = 1
+    Expression = 2
 
 aShapeKeeper = ShapeKeeper()
 
@@ -94,17 +100,62 @@ def refreshColoursBM(mesh, coloursLocation, colours):
 
         vertexLocation = coloursLocation[x]
 
-        for loop in face.loop:
+        for loop in face.loops:
             color = [colours[vertexLocation[0]][0],colours[vertexLocation[1]][1],colours[vertexLocation[2]][2],1.0]
-            colour_layer.data[i].color = color
+            loop[colour_layer] = color
             i += 1
-            pass
+           
         x += 1
+
+    bm.to_mesh(mesh)
 
     return None
 
+def CreateVertexMaterial():
 
-def refreshModel():
+    mat = bpy.data.materials.new(name = "VertexColourMat")
+
+    RefreshVertexMaterial(mat)
+
+    return mat
+
+def RefreshVertexMaterial(mat):
+
+    #bpy.data.node_groups.clear()
+    mat.use_nodes = True
+
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+
+    outputNode = ""
+
+    links.clear()
+    nodes.clear()
+
+    vertexColour = nodes.new(type = "ShaderNodeVertexColor")    
+
+    diffuse = nodes.new(type = "ShaderNodeBsdfDiffuse")
+    output = nodes.new( type = "ShaderNodeOutputMaterial")
+
+    links.new(diffuse.outputs["BSDF"], output.inputs["Surface"])
+    links.new(vertexColour.outputs["Color"], diffuse.inputs["Color"])
+
+def SetMaterial(obj):
+    mat = bpy.data.materials.get("VertexColourMat")
+
+    if(mat is None):
+        mat = CreateVertexMaterial()
+    else:
+        RefreshVertexMaterial(mat)
+        
+    
+    if(not obj.data.materials):
+        obj.data.materials.append(mat)
+        
+
+    return
+
+def refreshModel(sliderObj):
 
     #if aShapeKeeper.base == "": return
 
@@ -113,7 +164,7 @@ def refreshModel():
     coofficient = getCoefficients(o)
 
     if not(coofficient) : return
-
+    
     mesh = o.data
 
     if not(aShapeKeeper.base):
@@ -122,20 +173,27 @@ def refreshModel():
 
     morphModel = aShapeKeeper.base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
 
-    i = 0
+    if(sliderObj.sliderType == SliderType.Colour.value or not mesh.vertex_colors):
+        refreshColoursBM(mesh, morphModel.tci, morphModel.colors)
 
-    mesh.clear_geometry()
+    else:       
 
-    verts = morphModel.vertices
-    edges = []
-    faces = morphModel.tvi
+        i = 0
 
-    mesh.from_pydata(verts, edges, faces) 
+        mesh.clear_geometry()
 
-    refreshColoursBM(mesh, morphModel.tvi, morphModel.colors)
+        verts = morphModel.vertices
+        edges = []
+        faces = morphModel.tvi
 
-def resize(self, context):
-    refreshModel()
+        mesh.from_pydata(verts, edges, faces) 
+        
+        if(o.my_settings.ColourCount == 0) : return
+
+        refreshColoursBM(mesh, morphModel.tci, morphModel.colors)
+    
+def resize(self, context): 
+    refreshModel(self)
     return
 
 def CreateBlenderMesh(mesh):
@@ -157,8 +215,8 @@ def LoadFaceModel():
 
     morphablemodel_with_expressions = ""
 
-    modelPath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_blendshapes_with_colour.bin"
-    blendshapesPath = baseLocation + "share/expression_blendshapes_3448.bin"
+    modelPath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_with_colour.bin"
+    blendshapesPath = ""
 
     model = eos.morphablemodel.load_model(modelPath)
 
@@ -244,7 +302,8 @@ def CreateBaseShape():
         obj.my_settings.ShapeCount = base.get_shape_model().get_num_principal_components()
         obj.my_settings.ColourCount = base.get_color_model().get_num_principal_components()
 
-
+    print(obj.my_settings.ColourCount)
+    if(obj.my_settings.ColourCount != 0): SetMaterial(obj)
 
     #print(obj.my_settings.ShapeCount)
     #print(obj.my_settings.ColourCount)
@@ -256,6 +315,19 @@ def CreateBaseShape():
     for x in range(0,obj.my_settings.ShapeCount + obj.my_settings.ColourCount + obj.my_settings.ExpressionCount):
         prop = obj.sliders.sliderList.add()
         prop.value = 0
+
+        if(x < obj.my_settings.ShapeCount) : 
+            prop.sliderType = SliderType.Shape.value
+           # print("Shape")
+            continue
+
+        if(x < obj.my_settings.ColourCount + obj.my_settings.ShapeCount ) :
+            prop.sliderType = SliderType.Colour.value
+            #print("Colour")
+            continue
+
+        #print("EXPRESS")
+        prop.sliderType = SliderType.Expression.value
 
    
 
@@ -271,14 +343,6 @@ def GetLabelText(showMore, sliderCount):
 
     return "Show Extra Sliders (" + str(maxSlider) + " / " + str(sliderCount) + ")"
 
-
-#base = LoadFaceModel()
-# cooCount = base.get_shape_model().get_num_principal_components()
-# colourCount = base.get_color_model().get_num_principal_components()
-
-# print("ColourCount : %d", colourCount)
-# expreCount = len(base.get_expression_model())
-
 class MySettings(bpy.types.PropertyGroup):
    
     ExpressionCount : bpy.props.IntProperty(name = "ExpressionCount", description = "Number of Expressions",default = 0)
@@ -291,6 +355,8 @@ class MySettings(bpy.types.PropertyGroup):
 
 class SliderProp(bpy.types.PropertyGroup):
     value : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
+    #sliderType : bpy.props.EnumProperty(name = "SliderType", items = [("0", "Shape",""), ("1", "Expression",""), ("2", "Colour","")], default = "None")
+    sliderType : bpy.props.IntProperty(name = "SliderType", description = "Int enum value for the slider type", default = 0)
 
 class SliderList(bpy.types.PropertyGroup):
     sliderList : bpy.props.CollectionProperty(type=SliderProp)
@@ -344,16 +410,6 @@ class Show_More_Expression(bpy.types.Operator):
         obj.my_settings.ExpressionShowMore = not obj.my_settings.ExpressionShowMore
 
         return {'FINISHED'}
-# class Slider_Menu(bpy.types.Operator):
-#     bl_idname = "view3d.add_frame"
-#     bl_label = "Moves Page"
-#     bl_destription = "Moves page of current sliders"
-
-#     def execute(self, context):
-
-#         CreateBaseShape()
-
-#         return {'FINISHED'}
 
 class TEST_PT_Panel(bpy.types.Panel):
     bl_idname = "TEST_PT_Panel"
@@ -366,11 +422,17 @@ class TEST_PT_Panel(bpy.types.Panel):
         layout = self.layout
         #scene = context.scene
         obj = context.object
-        box = layout.box()     
+        box = layout.box()  
+
+        isInObjectMode = True
+        
+        if(obj != None ):
+            isInObjectMode = obj.mode == "OBJECT"   
 
         row = box.row()
         row.operator('view3d.create_model')  
-        
+        row.enabled = isInObjectMode
+
         if(obj != None):
 
             objType = getattr(obj, "type", "")
@@ -404,11 +466,12 @@ class TEST_PT_Panel(bpy.types.Panel):
                         row = box.row()
                         #labelText += " (" + str(maxSlider + showMoreCount) + " / " + str(cooCount) + ")"
                         row.operator('view3d.show_more_shape', text = labelText)  
+                        row.enabled = isInObjectMode
                         row = box.row()
 
                     
-
-                    cf = row.grid_flow(row_major = True, columns = 3, align = False)            
+                    cf = row.grid_flow(row_major = True, columns = 3, align = False)        
+                    row.enabled = isInObjectMode    
                     for x in range(0,cooCount):             
                         if x > maxSlider + showMoreCount: break
                         k = "line_%d" % x   
@@ -429,9 +492,11 @@ class TEST_PT_Panel(bpy.types.Panel):
                         row = box.row()
                         #labelText += " (" + str(maxSlider + showMoreCount) + " / " + str(colourCount) + ")"
                         row.operator('view3d.show_more_colour', text = labelText )  
+                        row.enabled = isInObjectMode
                         row = box.row()
 
-                    cf = row.grid_flow(row_major = True, columns = 3, align = False)                     
+                    cf = row.grid_flow(row_major = True, columns = 3, align = False)    
+                    row.enabled = isInObjectMode                 
                                
                     for x in range(cooCount,cooCount + colourCount):  
                         if(x - cooCount) > maxSlider + showMoreCount : break
@@ -450,9 +515,11 @@ class TEST_PT_Panel(bpy.types.Panel):
                     if(labelText != ""):
                         row = box.row()
                         row.operator('view3d.show_more_expression', text = labelText)  
+                        row.enabled = isInObjectMode
                         row = box.row()
 
                     cf = row.grid_flow(row_major = True, columns = 3, align = False)  
+                    row.enabled = isInObjectMode
 
                     showMoreCount = 0
 
@@ -463,6 +530,7 @@ class TEST_PT_Panel(bpy.types.Panel):
                         k = "line_%d" % x    
                         #cf.prop(obj, '["' + k + '"]')
                         cf.prop(obj.sliders.sliderList[x], "value", text = str(x - cooCount - colourCount) + ":") 
+
 
 classes = (
     TEST_PT_Panel,
