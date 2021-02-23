@@ -4,10 +4,11 @@ import numpy as np
 import bmesh
 from enum import Enum
 import random
+import os.path
 
 import random
 
-baseLocation = "D:/Users/Alex/Documents/Personal/Uni/Diss/WorkFolder/eos/out/install/x86-Debug/"
+#baseLocation = "D:/Users/Alex/Documents/Personal/Uni/Diss/WorkFolder/eos/out/install/x86-Debug/"
 maxSlider = 20
 
 class ShapeKeeper(): # Create a dictionary with the path to model as key, model and value. check against mysetting property of locations 
@@ -21,12 +22,6 @@ class SliderType(Enum):
     Expression = 2
 
 aShapeKeeper = ShapeKeeper()
-
-# def animateFrame(scene):
-#     print("I HAVE BEEN ANIMATED")
-#     return
-
-# bpy.app.handlers.frame_change_pre.append(animateFrame)
 
 def getCoefficients(o):
 
@@ -253,7 +248,7 @@ def refreshAdvancedVertexMaterial(mat):
     
 
     ######################################### EDIT OTHER VALUES ################################################
-    
+
     bsdf.inputs['Subsurface'].default_value = 0.290
     bsdf.inputs['Metallic'].default_value = 0.0
     bsdf.inputs['Specular'].default_value = 0.1
@@ -267,9 +262,6 @@ def refreshAdvancedVertexMaterial(mat):
     bsdf.inputs['IOR'].default_value = 1.450
     bsdf.inputs['Transmission'].default_value = 0.0
     bsdf.inputs['Transmission Roughness'].default_value = 0.0
-
-
-
 
 def setMaterial(obj):
     mat = bpy.data.materials.get("VertexColourMat")
@@ -353,6 +345,7 @@ def refreshModel(sliderObj):
         #print(o.my_settings.ColourCount)
 
             refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth)
+    #obj["VertexList"] = [5,23,5,65,75]
    
 def resize(self, context): 
     refreshModel(self)
@@ -535,6 +528,7 @@ class MySettings(bpy.types.PropertyGroup):
 class GlobalSettings(bpy.types.PropertyGroup):
     GlobalFilePath : bpy.props.StringProperty(subtype = "FILE_PATH")
     GlobalBlendshapePath : bpy.props.StringProperty(name = "Blendshape Path:", subtype = "FILE_PATH")
+    GlobalVertexStore : bpy.props.StringProperty(subtype = "FILE_PATH")
 
 class SliderProp(bpy.types.PropertyGroup):
     value : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
@@ -578,6 +572,42 @@ class Create_New_Model(bpy.types.Operator):
 
         obj.scale = (0.03, 0.03, 0.03)
 
+        return {'FINISHED'}
+
+class Save_Selected_Vertex(bpy.types.Operator):
+    bl_idname = "view3d.save_selected_vertex"
+    bl_label = "Save Selected Verticies"
+    bl_destription = "A button to save selected vertecies"
+
+    def execute(self, context):
+
+        scene = context.scene   
+
+        mesh =  bpy.context.object.data
+
+        selectedVerts = [v for v in mesh.vertices if v.select]     
+
+        #print(scene.global_setting.GlobalVertexStore[-2:])
+        if(scene.global_setting.GlobalVertexStore[-1:] != "\\" and scene.global_setting.GlobalVertexStore[-1:] != "/") :
+            self.report({"ERROR"}, "File not compatible")
+            scene.global_setting.GlobalVertexStore = ""
+            return {'FINISHED'}   
+
+        fileNumber = 0
+        fileName = "vertexNumber_" + str(fileNumber) + ".txt"
+        filePath = scene.global_setting.GlobalVertexStore       
+
+        while (os.path.isfile(filePath + fileName)):
+
+            fileNumber += 1
+            fileName = "vertexNumber_" + str(fileNumber) + ".txt"
+            filePath = scene.global_setting.GlobalVertexStore
+
+        f = open(filePath + fileName, "w")
+
+        for v in selectedVerts:
+            f.write(str(v.index) + ",")
+        
         return {'FINISHED'}
 
 class Create_Copy_Model(bpy.types.Operator):
@@ -702,24 +732,27 @@ class Main_PT_Panel(bpy.types.Panel):
         layout = self.layout
         scene = context.scene
         obj = context.object
-        box = layout.box()  
 
+        box = layout.box() 
+        
         isInObjectMode = True
+
+        if(obj != None ):
+            isInObjectMode = obj.mode == "OBJECT" 
 
         row = box.row()
         row.operator('view3d.create_new_model')  
+        row.enabled = isInObjectMode 
 
         row = box.row()
         row.prop(scene.global_setting, "GlobalFilePath", text = "Model Path")
+        row.enabled = isInObjectMode 
 
         row = box.row()
         row.prop(scene.global_setting, "GlobalBlendshapePath", text = "Blendshape Path")
-        
-        if(obj != None ):
-            isInObjectMode = obj.mode == "OBJECT"   
+        row.enabled = isInObjectMode        
 
-        row = box.row()
-       # row.label(text = "----------------------------------------------------------------------------------------------")
+        #box = layout.box() 
 
         if(obj != None):
 
@@ -728,9 +761,11 @@ class Main_PT_Panel(bpy.types.Panel):
             if(objType == "MESH"):                             
 
                 #ob = context.active_object
-                
+                box = layout.box() 
+
                 row = box.row()
                 row.label(text = "Object: " + obj.name)
+                row.enabled = isInObjectMode  
 
                 shapeCount = obj.my_settings.ShapeCount
                 colourCount = obj.my_settings.ColourCount
@@ -740,7 +775,21 @@ class Main_PT_Panel(bpy.types.Panel):
                 row.prop(obj.my_settings, "SmoothShader")
                 row.enabled = isInObjectMode     
 
+                #box = layout.box() 
+
                 if(shapeCount > 0 or colourCount > 0 or expressionCount > 0):
+
+                    box = layout.box()  
+
+                    row = box.row()
+                    row.operator('view3d.save_selected_vertex')  
+                    row.enabled = isInObjectMode 
+
+                    row = box.row()
+                    row.prop(scene.global_setting, "GlobalVertexStore", text = "Vertex Save Location")
+                    row.enabled = isInObjectMode 
+
+                    box = layout.box()  
 
                     row = box.row()
                     row.operator('view3d.create_copy_model')  
@@ -757,6 +806,8 @@ class Main_PT_Panel(bpy.types.Panel):
                     row = box.row()
                     row.prop(obj.my_settings, "BlendshapePath")
                     row.enabled = False
+
+                    box = layout.box() 
                     
                     row = box.row()
                     row.operator('view3d.random_sliders')
@@ -764,14 +815,16 @@ class Main_PT_Panel(bpy.types.Panel):
 
                     row = box.row()
                     row.operator('view3d.reset_sliders')
-                    row.enabled = isInObjectMode                   
+                    row.enabled = isInObjectMode   
+
+                    #box = layout.box()                 
                        
 
                 #row = box.row()
                 #row.prop(obj.my_settings, "reverse")
 
                 if(shapeCount > 0):
-
+                    box = layout.box() 
                     row = box.row()
                     row.label(text = "Shape: ")
                     row = box.row()           
@@ -797,7 +850,7 @@ class Main_PT_Panel(bpy.types.Panel):
                         cf.prop(obj.sliders.sliderList[x], "value", text = str(x)+ ":")
 
                 if(colourCount > 0):
-
+                    box = layout.box() 
                     row = box.row()
                     row.label(text = "Colour: ")
                     row = box.row()
@@ -824,7 +877,7 @@ class Main_PT_Panel(bpy.types.Panel):
                         cf.prop(obj.sliders.sliderList[x], "value", text = str(x - shapeCount)+ ":")
                 
                 if(expressionCount > 0):
-
+                    box = layout.box() 
                     row = box.row()
                     row.label(text = "Expression: ")
                     row = box.row()
@@ -862,7 +915,8 @@ classes = (
     Show_More_Expression,
     Reset_Sliders,
     Random_Sliders,
-    GlobalSettings
+    GlobalSettings,
+    Save_Selected_Vertex
         )
 
 def register():
