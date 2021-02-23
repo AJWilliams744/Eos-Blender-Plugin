@@ -122,15 +122,15 @@ def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth):
 
     return None
 
-def createVertexMaterial():
+def createVertexMaterial(matName):
 
-    mat = bpy.data.materials.new(name = "VertexColourMat")
+    mat = bpy.data.materials.new(name = matName)
 
-    refreshVertexMaterial(mat)
+    refreshAdvancedVertexMaterial(mat)
 
     return mat
 
-def refreshVertexMaterial(mat):
+def refreshBasicVertexMaterial(mat):
 
     #bpy.data.node_groups.clear()
     mat.use_nodes = True
@@ -138,7 +138,7 @@ def refreshVertexMaterial(mat):
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
 
-    outputNode = ""
+    #outputNode = ""
 
     links.clear()
     nodes.clear()
@@ -151,13 +151,133 @@ def refreshVertexMaterial(mat):
     links.new(diffuse.outputs["BSDF"], output.inputs["Surface"])
     links.new(vertexColour.outputs["Color"], diffuse.inputs["Color"])
 
+def createBasicColourRamp(nodes, interpolation, posZero, colZero, posOne, colOne):
+
+    baseColourRamp = nodes.new(type = "ShaderNodeValToRGB")
+    baseColourRamp.color_ramp.interpolation = interpolation
+    baseColourRamp.color_ramp.elements[0].position = posZero
+    baseColourRamp.color_ramp.elements[0].color = colZero
+    baseColourRamp.color_ramp.elements[1].position = posOne
+    baseColourRamp.color_ramp.elements[1].color = colOne
+
+    return baseColourRamp
+
+def createMixRGBNode(nodes, blendType, factor):
+
+    baseMix = nodes.new(type = "ShaderNodeMixRGB")
+    baseMix.blend_type = blendType
+    baseMix.inputs[0].default_value = factor
+    return baseMix
+
+def refreshAdvancedVertexMaterial(mat):
+
+    #bpy.data.node_groups.clear()
+    mat.use_nodes = True
+
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+
+    #outputNode = ""
+
+    links.clear()
+    nodes.clear()
+
+    output = nodes.new( type = "ShaderNodeOutputMaterial")
+    bsdf = nodes.new(type="ShaderNodeBsdfPrincipled")
+
+    links.new(bsdf.outputs['BSDF'], output.inputs['Surface'])
+
+    vertexColour = nodes.new(type = "ShaderNodeVertexColor")
+
+    ################################### CREATE/LINK BASE COLOUR SHADERS ##########################################    
+
+    baseVoronoi = nodes.new(type = "ShaderNodeTexVoronoi")
+    baseVoronoi.inputs['Scale'].default_value = 305.6
+
+    baseColourRamp = createBasicColourRamp(nodes, 'B_SPLINE', 0.259, (0.767412,0.767412,0.767412,1), 0.814, (1,1,1,1))
+    baseMix = createMixRGBNode(nodes, 'MULTIPLY', 0.458)
+
+    links.new(baseVoronoi.outputs['Distance'], baseColourRamp.inputs['Fac'])
+    links.new(baseColourRamp.outputs['Color'], baseMix.inputs['Color2'])
+    links.new(vertexColour.outputs['Color'], baseMix.inputs['Color1'])
+    links.new(baseMix.outputs['Color'], bsdf.inputs['Base Color'])
+
+    ################################### CREATE/LINK SUBSURFACE SHADERS ########################################## 
+
+
+    sufNoise = nodes.new(type="ShaderNodeTexNoise")
+    sufNoise.inputs['Scale'].default_value = 40.0
+
+    sufColourRamp = createBasicColourRamp(nodes, 'LINEAR', 0.0, (0,0,0,1), 1.0, (1,1,1,1))
+    sufMix = createMixRGBNode(nodes, 'MULTIPLY', 1.0)
+
+    links.new(sufNoise.outputs['Color'], sufColourRamp.inputs['Fac'])
+    links.new(vertexColour.outputs['Color'], sufMix.inputs['Color2'])
+    links.new(sufColourRamp.outputs['Color'], sufMix.inputs['Color1'])
+    links.new(sufMix.outputs['Color'], bsdf.inputs['Subsurface Radius'])
+    links.new(sufMix.outputs['Color'], bsdf.inputs['Subsurface Color'])
+
+    ################################### CREATE/LINK ROUGHNESS SHADERS ##########################################
+
+    roughNoise = nodes.new(type="ShaderNodeTexNoise")
+    roughNoise.inputs['Scale'].default_value = 15.1
+
+    roughVoronoi = nodes.new(type = "ShaderNodeTexVoronoi")
+    roughVoronoi.inputs['Scale'].default_value = 305.6
+
+    roughNRamp = createBasicColourRamp(nodes, 'B_SPLINE' , 0.168, (0.447988,0.447988,0.447988,1), 0.886, (1,1,1,1))
+    roughVRamp = createBasicColourRamp(nodes, 'LINEAR' , 0.0, (0.0412789,0.0412789,0.0412789,1), 0.0, (0.380056,0.380056,0.380056,1))
+    roughMix = createMixRGBNode(nodes, 'MULTIPLY', 0.4)
+
+    links.new(roughNoise.outputs['Fac'], roughNRamp.inputs['Fac'])
+    links.new(roughNRamp.outputs['Color'], roughMix.inputs['Color1'])
+    links.new(roughVoronoi.outputs['Distance'], roughVRamp.inputs['Fac'])
+    links.new(roughVRamp.outputs['Color'], roughMix.inputs['Color2'])
+    links.new(roughMix.outputs['Color'], bsdf.inputs['Roughness'])
+
+    ################################### CREATE/LINK BUMP SHADERS ##########################################
+
+    bumpVoronoi = nodes.new(type = "ShaderNodeTexVoronoi")
+    bumpVoronoi.inputs['Scale'].default_value = 517.4
+
+    bumpRamp = createBasicColourRamp(nodes, 'LINEAR' , 0.0, (0,0,0,1), 1, (0.0508648,0.0508648,0.0508648,1))
+
+
+    bumpMap = nodes.new(type = "ShaderNodeBump")
+    bumpMap.inputs['Strength'].default_value = 0.4
+    bumpMap.inputs['Distance'].default_value = 0.1
+
+    links.new(bumpVoronoi.outputs['Distance'], bumpRamp.inputs['Fac'])
+    links.new(bumpRamp.outputs['Color'], bumpMap.inputs['Height'])
+    links.new(bumpMap.outputs['Normal'], bsdf.inputs['Normal'])
+    
+
+    ######################################### EDIT OTHER VALUES ################################################
+    
+    bsdf.inputs['Subsurface'].default_value = 0.290
+    bsdf.inputs['Metallic'].default_value = 0.0
+    bsdf.inputs['Specular'].default_value = 0.1
+    bsdf.inputs['Specular Tint'].default_value = 0.0
+    bsdf.inputs['Anisotropic'].default_value = 0.0
+    bsdf.inputs['Anisotropic Rotation'].default_value = 0.0
+    bsdf.inputs['Sheen'].default_value = 0.0
+    bsdf.inputs['Sheen Tint'].default_value = 0.345
+    bsdf.inputs['Clearcoat'].default_value = 0.0
+    bsdf.inputs['Clearcoat Roughness'].default_value = 0.03
+    bsdf.inputs['IOR'].default_value = 1.450
+    bsdf.inputs['Transmission'].default_value = 0.0
+    bsdf.inputs['Transmission Roughness'].default_value = 0.0
+
+
+
+
 def setMaterial(obj):
     mat = bpy.data.materials.get("VertexColourMat")
 
     if(mat is None):
-        mat = createVertexMaterial()
+        mat = createVertexMaterial("VertexColourMat")
     else:
-        refreshVertexMaterial(mat)
+        refreshAdvancedVertexMaterial(mat)
         
     
     if(not obj.data.materials):
