@@ -113,10 +113,52 @@ def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth):
            
         x += 1
 
+    deletionVerts = getdeletionVerts()    
+
+    if(not deletionVerts == None):
+
+        deleteVerts(bm, deletionVerts)
+
     bm.to_mesh(mesh)
 
     return None
 
+def getdeletionVerts():
+
+    scene = bpy.context.scene
+    obj = bpy.context.object
+
+    fileName = obj.my_settings.VertexFileName
+    filePath = scene.global_setting.GlobalVertexStore
+
+    if(not os.path.isfile(filePath + fileName)): return 
+
+    f = open(filePath + fileName, "r")
+    
+    line = f.readline()
+    line = line.split(",")
+
+    f.close()
+
+    return line
+
+def deleteVerts(bmMesh, vertsIndex):
+    
+    verts = [0] * len(vertsIndex)
+    count = 0
+
+    bmMesh.verts.ensure_lookup_table()
+
+    #print(len(bmMesh.verts)) 
+
+    for v in vertsIndex:
+        verts[count] = bmMesh.verts[int(v)]   
+        #verts[count] = 0
+        count += 1 
+
+    for v in verts:
+        bmMesh.verts.remove(v)
+    
 def createVertexMaterial(matName):
 
     mat = bpy.data.materials.new(name = matName)
@@ -528,6 +570,8 @@ class MySettings(bpy.types.PropertyGroup):
     VertexFileName : bpy.props.StringProperty(name = "File Name")
     VertexOverwrite : bpy.props.BoolProperty(name = "Overwrite Vertex File", default = False)
 
+    DeleteVertex : bpy.props.BoolProperty(name = "Smooth Shading", description  = "Should I smooth shade", default = False, update = changedSmooth)
+
 class GlobalSettings(bpy.types.PropertyGroup):
     GlobalFilePath : bpy.props.StringProperty(subtype = "FILE_PATH")
     GlobalBlendshapePath : bpy.props.StringProperty(name = "Blendshape Path:", subtype = "FILE_PATH")
@@ -602,6 +646,9 @@ class Save_Selected_Vertex(bpy.types.Operator):
         fileName = obj.my_settings.VertexFileName
         filePath = scene.global_setting.GlobalVertexStore  
 
+        if(fileName == ""):
+            fileName = "VertexIndices"
+
         if(fileName[-4:] == ".txt"):
             fileName = fileName[:-4]
 
@@ -634,6 +681,10 @@ class Save_Selected_Vertex(bpy.types.Operator):
                 first = False
             else:
                 f.write("," + str(v.index))
+
+        f.close()
+
+        obj.sliders.sliderList[0].value = obj.sliders.sliderList[0].value
         
         return {'FINISHED'}
 
