@@ -557,6 +557,17 @@ def changedVertexDelete(self, context):
     obj = bpy.context.object
     obj.sliders.sliderList[0].value = obj.sliders.sliderList[0].value
 
+def getEyeModel(filepath, objName, link):
+
+    with bpy.data.libraries.load(filepath, link=link) as (data_from, data_to):
+                data_to.objects = [name for name in data_from.objects if name.startswith(objName)]
+
+    #link object to current scene
+    for obj in data_to.objects:
+        if obj is not None:            
+            bpy.context.collection.objects.link(obj) # Blender 2.8x
+            return obj
+
 class MySettings(bpy.types.PropertyGroup):
    
     ExpressionCount : bpy.props.IntProperty(name = "ExpressionCount", description = "Number of Expressions",default = 0)
@@ -735,15 +746,36 @@ class Link_Eye_Model(bpy.types.Operator):
 
     def execute(self, context):
         
-        file_path = "D:/Users/Alex/Documents/Personal/Uni/Diss/Repo/MorphableFaces/BlenderFiles/Eye.blend"
-        inner_path = 'Object'
-        object_name = 'Eye'
+        # file_path = "D:/Users/Alex/Documents/Personal/Uni/Diss/Repo/MorphableFaces/BlenderFiles/Eye.blend"
+        # inner_path = 'Object'
+        # object_name = 'Eye'
         
-        bpy.ops.wm.append(
-            filepath=os.path.join(file_path, inner_path, object_name),
-            directory=os.path.join(file_path, inner_path),
-            filename=object_name
-            )
+        # eye = bpy.ops.wm.append(
+        #     filepath=os.path.join(file_path, inner_path, object_name),
+        #     directory=os.path.join(file_path, inner_path),
+        #     filename=object_name
+        # )
+
+        head = context.object
+        
+       # path to the blend
+        filepath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Repo/MorphableFaces/BlenderFiles/Eye.blend"
+
+        # link all objects starting with 'Cube'
+        leftEye = getEyeModel(filepath, "Eye", False)
+        rightEye = getEyeModel(filepath, "Eye", False)
+
+        leftEye.parent = head
+        rightEye.parent = head
+
+        leftEye.scale = (11.6496,11.6496,11.6496)
+        rightEye.scale = (11.6496,11.6496,11.6496)
+
+        leftEye.location = (-30.9127, 24.1305, 72.3501)
+        leftEye.rotation_euler = (-1.57,0,0)
+
+        rightEye.location = (30.9127, 24.1305, 72.3501)
+        rightEye.rotation_euler = (-1.57,0,0)
 
         return {'FINISHED'}
 
