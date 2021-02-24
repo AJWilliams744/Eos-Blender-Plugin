@@ -83,7 +83,7 @@ def refreshColours(mesh, coloursLocation, colours):
 
     return None
 
-def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth):
+def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth, shouldDelete):
 
     bm = bmesh.new()
     bm.from_mesh(mesh)
@@ -113,11 +113,13 @@ def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth):
            
         x += 1
 
-    deletionVerts = getdeletionVerts()    
+    if(shouldDelete):
 
-    if(not deletionVerts == None):
+        deletionVerts = getdeletionVerts()    
 
-        deleteVerts(bm, deletionVerts)
+        if(not deletionVerts == None):
+
+            deleteVerts(bm, deletionVerts)
 
     bm.to_mesh(mesh)
 
@@ -156,7 +158,7 @@ def deleteVerts(bmMesh, vertsIndex):
         #verts[count] = 0
         count += 1 
 
-    for v in verts:
+    for v in verts: 
         bmMesh.verts.remove(v)
     
 def createVertexMaterial(matName):
@@ -366,12 +368,12 @@ def refreshModel(sliderObj):
 
     morphModel = aShapeKeeper.base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
 
-    if((sliderObj.sliderType == SliderType.Colour.value or not mesh.vertex_colors) and obj.my_settings.ColourCount != 0):
-        refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth)
+    if((sliderObj.sliderType == SliderType.Colour.value or not mesh.vertex_colors) and obj.my_settings.ColourCount != 0 and not obj.my_settings.DeleteVertex):
+        refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth, False)
 
     else:       
 
-        i = 0
+        #i = 0
 
         mesh.clear_geometry()
 
@@ -386,7 +388,7 @@ def refreshModel(sliderObj):
         else:
         #print(o.my_settings.ColourCount)
 
-            refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth)
+            refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth, obj.my_settings.DeleteVertex)
     #obj["VertexList"] = [5,23,5,65,75]
    
 def resize(self, context): 
@@ -549,6 +551,10 @@ def getLabelText(showMore, sliderCount):
 
     return "Show Extra Sliders (" + str(maxSlider) + " / " + str(sliderCount) + ")"
 
+def changedVertexDelete(self, context):
+    obj = bpy.context.object
+    obj.sliders.sliderList[0].value = obj.sliders.sliderList[0].value
+
 class MySettings(bpy.types.PropertyGroup):
    
     ExpressionCount : bpy.props.IntProperty(name = "ExpressionCount", description = "Number of Expressions",default = 0)
@@ -570,7 +576,7 @@ class MySettings(bpy.types.PropertyGroup):
     VertexFileName : bpy.props.StringProperty(name = "File Name")
     VertexOverwrite : bpy.props.BoolProperty(name = "Overwrite Vertex File", default = False)
 
-    DeleteVertex : bpy.props.BoolProperty(name = "Smooth Shading", description  = "Should I smooth shade", default = False, update = changedSmooth)
+    DeleteVertex : bpy.props.BoolProperty(name = "Hide Vertex", description  = "Should I delete vertex in file", default = False, update = changedVertexDelete)
 
 class GlobalSettings(bpy.types.PropertyGroup):
     GlobalFilePath : bpy.props.StringProperty(subtype = "FILE_PATH")
@@ -873,6 +879,10 @@ class Main_PT_Panel(bpy.types.Panel):
 
                     row = box.row()
                     row.prop(obj.my_settings, "VertexOverwrite")
+                    row.enabled = isInObjectMode 
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "DeleteVertex")
                     row.enabled = isInObjectMode 
 
                     box = layout.box()  
