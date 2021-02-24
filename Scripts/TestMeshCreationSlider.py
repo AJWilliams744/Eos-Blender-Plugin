@@ -6,7 +6,7 @@ from enum import Enum
 import random
 import os.path
 
-import random
+from numpy import random
 
 #baseLocation = "D:/Users/Alex/Documents/Personal/Uni/Diss/WorkFolder/eos/out/install/x86-Debug/"
 maxSlider = 20
@@ -580,6 +580,10 @@ class MySettings(bpy.types.PropertyGroup):
 
     DeleteVertex : bpy.props.BoolProperty(name = "Hide Vertex", description  = "Should I delete vertex in file", default = False, update = changedVertexDelete)
 
+    ShapeSD : bpy.props.FloatProperty(name = "Shape SD",min = 0, max = 2, description = "Standard Deviation for Shape", default = 0)
+    ColourSD : bpy.props.FloatProperty(name = "Colour SD",min = 0, max = 2, description = "Standard Deviation for Colour", default = 0)
+    ExpreSD : bpy.props.FloatProperty(name = "Expre SD",min = 0, max = 2, description = "Standard Deviation for Expressions", default = 0)
+
 class GlobalSettings(bpy.types.PropertyGroup):
     GlobalFilePath : bpy.props.StringProperty(subtype = "FILE_PATH")
     GlobalBlendshapePath : bpy.props.StringProperty(name = "Blendshape Path:", subtype = "FILE_PATH")
@@ -812,18 +816,47 @@ class Random_Sliders(bpy.types.Operator):
         obj = context.object
         obj.my_settings.IsReseting = True # Stop the update being called during change
 
+        ############################ Basic Random ##################################################        
+
+        # for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount):             
+
+        #     if x < obj.my_settings.ShapeCount + obj.my_settings.ColourCount:
+        #         randomNum = (random.random() * 4) - 2
+        #         obj.sliders.sliderList[x].value = randomNum
+        #     else:
+        #         randomNum = (random.random() * 0.5) - 0.1
+        #         obj.sliders.sliderList[x].value = randomNum
+                
+        
+
+        ############################ Normal (Gaussian) Random ##################################################
+
+        normalListShape = random.normal(loc = 0, scale = obj.my_settings.ShapeSD, size = (obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount))
+        normalListColour = random.normal(loc = 0, scale = obj.my_settings.ColourSD, size = (obj.my_settings.ColourCount))
+        normalListExp = random.normal(loc = 0, scale = obj.my_settings.ExpreSD, size = (obj.my_settings.ExpressionCount))
+
+        # for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount):
+
+        #     obj.sliders.sliderList[x].value = normalList[x]
+
         for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount):             
 
-            if x < obj.my_settings.ShapeCount + obj.my_settings.ColourCount:
-                randomNum = (random.random() * 4) - 2
-                obj.sliders.sliderList[x].value = randomNum
-            else:
-                randomNum = (random.random() * 0.5) - 0.1
-                obj.sliders.sliderList[x].value = randomNum
+            if x < obj.my_settings.ShapeCount:
                 
+                obj.sliders.sliderList[x].value = normalListShape[x]
+
+            elif x < obj.my_settings.ShapeCount + obj.my_settings.ColourCount:
+                obj.sliders.sliderList[x].value = normalListColour[x - obj.my_settings.ShapeCount]
+
+            else:
+                obj.sliders.sliderList[x].value = normalListExp[x - obj.my_settings.ShapeCount - obj.my_settings.ColourCount]
+
+
+        ##########################################################################################################
+
         obj.my_settings.IsReseting = False
 
-        obj.sliders.sliderList[0].value = (random.random() * 2) - 1 #Trigger the refresh
+        obj.sliders.sliderList[0].value = obj.sliders.sliderList[0].value #Trigger the refresh
 
         return {'FINISHED'}
 
@@ -937,6 +970,20 @@ class Main_PT_Panel(bpy.types.Panel):
                     row = box.row()
                     row.operator('view3d.random_sliders')
                     row.enabled = isInObjectMode
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "ShapeSD")
+                    row.enabled = isInObjectMode
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "ColourSD")
+                    row.enabled = isInObjectMode
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "ExpreSD")
+                    row.enabled = isInObjectMode
+
+                    box = layout.box() 
 
                     row = box.row()
                     row.operator('view3d.reset_sliders')
