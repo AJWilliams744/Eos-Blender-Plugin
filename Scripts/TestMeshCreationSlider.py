@@ -525,6 +525,9 @@ class MySettings(bpy.types.PropertyGroup):
 
     FileName : bpy.props.StringProperty(name = "File")
 
+    VertexFileName : bpy.props.StringProperty(name = "File Name")
+    VertexOverwrite : bpy.props.BoolProperty(name = "Overwrite Vertex File", default = False)
+
 class GlobalSettings(bpy.types.PropertyGroup):
     GlobalFilePath : bpy.props.StringProperty(subtype = "FILE_PATH")
     GlobalBlendshapePath : bpy.props.StringProperty(name = "Blendshape Path:", subtype = "FILE_PATH")
@@ -583,6 +586,8 @@ class Save_Selected_Vertex(bpy.types.Operator):
 
         scene = context.scene   
 
+        obj = bpy.context.object
+
         mesh =  bpy.context.object.data
 
         selectedVerts = [v for v in mesh.vertices if v.select]     
@@ -593,20 +598,42 @@ class Save_Selected_Vertex(bpy.types.Operator):
             scene.global_setting.GlobalVertexStore = ""
             return {'FINISHED'}   
 
-        fileNumber = 0
-        fileName = "vertexNumber_" + str(fileNumber) + ".txt"
-        filePath = scene.global_setting.GlobalVertexStore       
+        fileNumber = -1
+        fileName = obj.my_settings.VertexFileName
+        filePath = scene.global_setting.GlobalVertexStore  
 
-        while (os.path.isfile(filePath + fileName)):
+        if(fileName[-4:] == ".txt"):
+            fileName = fileName[:-4]
 
-            fileNumber += 1
-            fileName = "vertexNumber_" + str(fileNumber) + ".txt"
-            filePath = scene.global_setting.GlobalVertexStore
+        shortPath = fileName
+        #print(fileName)
+
+        if (not obj.my_settings.VertexOverwrite): 
+
+            if(len(shortPath) > 2):
+                if(shortPath[-2] == "_"):
+                    shortPath = shortPath[:-2]
+
+            while (os.path.isfile(filePath + fileName + ".txt")):
+
+                fileNumber += 1
+                fileName = shortPath + "_" + str(fileNumber) 
+                #filePath = scene.global_setting.GlobalVertexStore
+
+        fileName += ".txt"
+
+        obj.my_settings.VertexFileName = fileName
 
         f = open(filePath + fileName, "w")
 
+        first = True
+
         for v in selectedVerts:
-            f.write(str(v.index) + ",")
+            if(first):
+                f.write(str(v.index))
+                first = False
+            else:
+                f.write("," + str(v.index))
         
         return {'FINISHED'}
 
@@ -786,7 +813,15 @@ class Main_PT_Panel(bpy.types.Panel):
                     row.enabled = isInObjectMode 
 
                     row = box.row()
-                    row.prop(scene.global_setting, "GlobalVertexStore", text = "Vertex Save Location")
+                    row.prop(scene.global_setting, "GlobalVertexStore", text = "Folder")
+                    row.enabled = isInObjectMode 
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "VertexFileName")
+                    row.enabled = isInObjectMode 
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "VertexOverwrite")
                     row.enabled = isInObjectMode 
 
                     box = layout.box()  
