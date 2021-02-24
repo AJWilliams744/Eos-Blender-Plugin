@@ -11,6 +11,8 @@ import random
 #baseLocation = "D:/Users/Alex/Documents/Personal/Uni/Diss/WorkFolder/eos/out/install/x86-Debug/"
 maxSlider = 20
 
+
+
 class ShapeKeeper(): # Create a dictionary with the path to model as key, model and value. check against mysetting property of locations 
     base = ""
     modelPath = ""
@@ -582,6 +584,7 @@ class GlobalSettings(bpy.types.PropertyGroup):
     GlobalFilePath : bpy.props.StringProperty(subtype = "FILE_PATH")
     GlobalBlendshapePath : bpy.props.StringProperty(name = "Blendshape Path:", subtype = "FILE_PATH")
     GlobalVertexStore : bpy.props.StringProperty(subtype = "FILE_PATH")
+    GlobalEyePath : bpy.props.StringProperty(subtype = "FILE_PATH")
 
 class SliderProp(bpy.types.PropertyGroup):
     value : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
@@ -718,6 +721,25 @@ class Create_Copy_Model(bpy.types.Operator):
         obj.my_settings.BlendshapePath = blendshapePath
         obj.scale = (0.03, 0.03, 0.03)
         
+
+        return {'FINISHED'}
+
+class Link_Eye_Model(bpy.types.Operator):
+    bl_idname = "view3d.link_eye_model"
+    bl_label = "Create Eye Model"
+    bl_destription = "A button to create a new eye model"
+
+    def execute(self, context):
+        
+        file_path = "D:/Users/Alex/Documents/Personal/Uni/Diss/Repo/MorphableFaces/BlenderFiles/Eye.blend"
+        inner_path = 'Object'
+        object_name = 'Eye'
+        
+        bpy.ops.wm.append(
+            filepath=os.path.join(file_path, inner_path, object_name),
+            directory=os.path.join(file_path, inner_path),
+            filename=object_name
+            )
 
         return {'FINISHED'}
 
@@ -859,7 +881,14 @@ class Main_PT_Panel(bpy.types.Panel):
                 row.prop(obj.my_settings, "SmoothShader")
                 row.enabled = isInObjectMode     
 
-                #box = layout.box() 
+                box = layout.box() 
+                row = box.row()
+                row.operator('view3d.link_eye_model')  
+                row.enabled = isInObjectMode
+
+                row = box.row()
+                row.prop(scene.global_setting, "GlobalEyePath", text = "Eye Path")
+                row.enabled = isInObjectMode 
 
                 if(shapeCount > 0 or colourCount > 0 or expressionCount > 0):
 
@@ -1012,7 +1041,8 @@ classes = (
     Reset_Sliders,
     Random_Sliders,
     GlobalSettings,
-    Save_Selected_Vertex
+    Save_Selected_Vertex,
+    Link_Eye_Model
         )
 
 def register():
