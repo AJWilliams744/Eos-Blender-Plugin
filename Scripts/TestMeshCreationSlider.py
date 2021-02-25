@@ -5,6 +5,7 @@ import bmesh
 from enum import Enum
 import random
 import os.path
+import mathutils
 
 from numpy import random
 
@@ -17,6 +18,8 @@ class ShapeKeeper(): # Create a dictionary with the path to model as key, model 
     base = ""
     modelPath = ""
     blendShapePath = ""
+    leftEye = ""
+    rightEye = ""
 
 class SliderType(Enum):
     Shape = 0
@@ -24,6 +27,14 @@ class SliderType(Enum):
     Expression = 2
 
 aShapeKeeper = ShapeKeeper()
+
+def getChildren(obj):
+    children = []
+    for ob in bpy.data.objects:
+        if(ob.parent == obj):
+            children.append(ob)
+
+    return children
 
 def getCoefficients(o):
 
@@ -367,6 +378,12 @@ def refreshModel(sliderObj):
         if((filePath != aShapeKeeper.modelPath or blendshapePath != aShapeKeeper.blendShapePath) and aShapeKeeper.base != ""):
             print("OTHER MODEL CHANGED")
             loadFaceModel(filePath, blendshapePath)
+            
+            if(obj.my_settings.HasEye):
+                children = getChildren(obj)
+                if(len(children == 2)):
+                    aShapeKeeper.leftEye = children[0]
+                    aShapeKeeper.rightEye = children[1]
 
     morphModel = aShapeKeeper.base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
 
@@ -391,8 +408,36 @@ def refreshModel(sliderObj):
         #print(o.my_settings.ColourCount)
 
             refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth, obj.my_settings.DeleteVertex)
-    #obj["VertexList"] = [5,23,5,65,75]
-   
+
+    if(obj.my_settings.HasEye and aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != "" and obj.my_settings.LeftEyeVertices != "" and obj.my_settings.RightEyeVertices != ""):
+
+        leftVertex = obj.my_settings.LeftEyeVertices.split(",")
+
+        if(int(leftVertex[0]) > len(obj.data.vertices)) : return
+        if(int(leftVertex[1]) > len(obj.data.vertices)) : return
+
+        handleEye(obj, int(leftVertex[0]), int(leftVertex[1]), aShapeKeeper.leftEye, obj.my_settings.EyeScaleOffset, obj.my_settings.LeftEyePosOffset)
+
+        rightVertex = obj.my_settings.RightEyeVertices.split(",")
+
+        if(int(rightVertex[0]) > len(obj.data.vertices)) : return
+        if(int(rightVertex[1]) > len(obj.data.vertices)) : return
+
+        handleEye(obj, int(rightVertex[0]), int(rightVertex[1]), aShapeKeeper.rightEye, obj.my_settings.EyeScaleOffset, obj.my_settings.RightEyePosOffset)
+
+def handleEye(obj, leftVertex, rightVertex, eye, scaleOffset, posOffset):
+
+    leftVec = mathutils.Vector(obj.data.vertices[leftVertex].co)
+    rightVec = mathutils.Vector(obj.data.vertices[rightVertex].co)
+
+    scale = abs((leftVec - rightVec).length) * scaleOffset
+
+    eye.scale = (scale, scale, scale)
+
+    newpos = (leftVec + rightVec) / 2
+
+    eye.location = (newpos[0] * posOffset[0], newpos[1] * posOffset[1], newpos[2] * posOffset[2])
+
 def resize(self, context): 
     refreshModel(self)
     return
@@ -553,9 +598,19 @@ def getLabelText(showMore, sliderCount):
 
     return "Show Extra Sliders (" + str(maxSlider) + " / " + str(sliderCount) + ")"
 
-def changedVertexDelete(self, context):
+def dirtyRefresh(self, context):
     obj = bpy.context.object
     obj.sliders.sliderList[0].value = obj.sliders.sliderList[0].value
+
+def changedHideEyes(self, context):
+    obj = context.object
+    # children = getChildren(obj)
+
+    # for child in children:
+    #     child.hide_set(obj.my_settings.HideEyes)
+    
+    aShapeKeeper.leftEye.hide_set(obj.my_settings.HideEyes)
+    aShapeKeeper.rightEye.hide_set(obj.my_settings.HideEyes)
 
 def getEyeModel(filepath, objName, link):
 
@@ -589,11 +644,22 @@ class MySettings(bpy.types.PropertyGroup):
     VertexFileName : bpy.props.StringProperty(name = "File Name")
     VertexOverwrite : bpy.props.BoolProperty(name = "Overwrite Vertex File", default = False)
 
-    DeleteVertex : bpy.props.BoolProperty(name = "Hide Vertex", description  = "Should I delete vertex in file", default = False, update = changedVertexDelete)
+    DeleteVertex : bpy.props.BoolProperty(name = "Hide Vertex", description  = "Should I delete vertex in file", default = False, update = dirtyRefresh)
 
     ShapeSD : bpy.props.FloatProperty(name = "Shape SD",min = 0, max = 2, description = "Standard Deviation for Shape", default = 0)
     ColourSD : bpy.props.FloatProperty(name = "Colour SD",min = 0, max = 2, description = "Standard Deviation for Colour", default = 0)
     ExpreSD : bpy.props.FloatProperty(name = "Expre SD",min = 0, max = 2, description = "Standard Deviation for Expressions", default = 0)
+
+    HasEye : bpy.props.BoolProperty(name = "Has Eye", default = False)
+    LeftEyeVertices : bpy.props.StringProperty(name = "Vertex",default = "")
+    RightEyeVertices : bpy.props.StringProperty(name = "Vertex",default = "")
+
+    HideEyes : bpy.props.BoolProperty(name = "Hide Eyes", description  = "Should I Hide eyes", default = False, update = changedHideEyes)
+
+    EyeScaleOffset : bpy.props.FloatProperty(name = "Eye Scale Offset", description = "Offset for the eye scale", default = 1, update = dirtyRefresh)
+
+    LeftEyePosOffset : bpy.props.FloatVectorProperty(name = "Pos offset", description = "Offset for left eye position", default = (1,1,1), update = dirtyRefresh)
+    RightEyePosOffset : bpy.props.FloatVectorProperty(name = "Pos offset", description = "Offset for right eye position", default = (1,1,1), update = dirtyRefresh)
 
 class GlobalSettings(bpy.types.PropertyGroup):
     GlobalFilePath : bpy.props.StringProperty(subtype = "FILE_PATH")
@@ -656,7 +722,7 @@ class Save_Selected_Vertex(bpy.types.Operator):
 
         obj = bpy.context.object
 
-        mesh =  bpy.context.object.data
+        mesh =  obj.data
 
         selectedVerts = [v for v in mesh.vertices if v.select]     
 
@@ -776,6 +842,83 @@ class Link_Eye_Model(bpy.types.Operator):
 
         rightEye.location = (30.9127, 24.1305, 72.3501)
         rightEye.rotation_euler = (-1.57,0,0)
+
+        head.my_settings.HasEye = True
+
+        aShapeKeeper.leftEye = leftEye
+        aShapeKeeper.rightEye = rightEye
+
+        return {'FINISHED'}
+
+class Link_LEye_Vertex(bpy.types.Operator):
+    bl_idname = "view3d.link_leye_vertex"
+    bl_label = "Link Left Eye Vertex"
+    bl_destription = "A button to link two verticies for the eye"
+
+    def execute(self, context):        
+        
+        head = context.object  
+        
+        children = getChildren(head);     
+
+        if(children == []):
+            self.report({"ERROR"}, "No eyes imported")
+            return {'FINISHED'}
+
+
+        if(not len(children) == 2):
+            self.report({"ERROR"}, "Too many eyes")
+            return {'FINISHED'}
+
+        print(children)
+      
+        leftEye = children[0]   
+
+        mesh =  head.data
+
+        selectedVerts = [v for v in mesh.vertices if v.select]
+
+        if(not len(selectedVerts) == 2):
+            self.report({"ERROR"}, "2 Verts haven't been selected")
+            return {'FINISHED'}
+
+        head.my_settings.LeftEyeVertices = str(selectedVerts[0].index) + "," + str(selectedVerts[1].index)
+
+        return {'FINISHED'}
+
+class Link_REye_Vertex(bpy.types.Operator):
+    bl_idname = "view3d.link_reye_vertex"
+    bl_label = "Link Right Eye Vertex"
+    bl_destription = "A button to link two verticies for the eye"
+
+    def execute(self, context):        
+        
+        head = context.object  
+        
+        children = getChildren(head);     
+
+        if(children == []):
+            self.report({"ERROR"}, "No eyes imported")
+            return {'FINISHED'}
+
+
+        if(not len(children) == 2):
+            self.report({"ERROR"}, "Too many eyes")
+            return {'FINISHED'}
+
+        print(children)
+      
+        rightEye = children[1]   
+
+        mesh =  head.data
+
+        selectedVerts = [v for v in mesh.vertices if v.select]
+
+        if(not len(selectedVerts) == 2):
+            self.report({"ERROR"}, "2 Verts haven't been selected")
+            return {'FINISHED'}
+
+        head.my_settings.RightEyeVertices = str(selectedVerts[0].index) + "," + str(selectedVerts[1].index)
 
         return {'FINISHED'}
 
@@ -946,16 +1089,75 @@ class Main_PT_Panel(bpy.types.Panel):
                 row.prop(obj.my_settings, "SmoothShader")
                 row.enabled = isInObjectMode     
 
-                box = layout.box() 
-                row = box.row()
-                row.operator('view3d.link_eye_model')  
-                row.enabled = isInObjectMode
-
-                row = box.row()
-                row.prop(scene.global_setting, "GlobalEyePath", text = "Eye Path")
-                row.enabled = isInObjectMode 
+               
 
                 if(shapeCount > 0 or colourCount > 0 or expressionCount > 0):
+
+                    box = layout.box()  
+
+                    row = box.row()
+                    row.operator('view3d.create_copy_model')  
+                    row.enabled = isInObjectMode
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "FileName")
+                    row.enabled = False
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "FilePath")
+                    row.enabled = False
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "BlendshapePath")
+                    row.enabled = False
+
+                    box = layout.box() 
+                    row = box.row()
+                    row.operator('view3d.link_eye_model')  
+                    row.enabled = isInObjectMode
+
+                    row = box.row()
+                    row.prop(scene.global_setting, "GlobalEyePath", text = "Eye Path")
+                    row.enabled = isInObjectMode 
+
+                    if(aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != ""):
+                        row = box.row()
+                        row.prop(obj.my_settings, "HideEyes", text = "Hide Eyes")
+                        row.enabled = isInObjectMode 
+
+                    box = layout.box()  
+
+                    row = box.row()
+                    row.operator("view3d.link_leye_vertex")  
+                    row.enabled = isInObjectMode
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "LeftEyeVertices")
+                    row.enabled = False 
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "LeftEyePosOffset")
+                    row.enabled = isInObjectMode   
+
+                    box = layout.box()               
+
+                    row = box.row()
+                    row.operator("view3d.link_reye_vertex")  
+                    row.enabled = isInObjectMode                                     
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "RightEyeVertices")
+                    row.enabled = False  
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "RightEyePosOffset")
+                    row.enabled = isInObjectMode        
+
+                    box = layout.box()   
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "EyeScaleOffset")
+                    row.enabled = isInObjectMode                
 
                     box = layout.box()  
 
@@ -977,25 +1179,7 @@ class Main_PT_Panel(bpy.types.Panel):
 
                     row = box.row()
                     row.prop(obj.my_settings, "DeleteVertex")
-                    row.enabled = isInObjectMode 
-
-                    box = layout.box()  
-
-                    row = box.row()
-                    row.operator('view3d.create_copy_model')  
-                    row.enabled = isInObjectMode
-
-                    row = box.row()
-                    row.prop(obj.my_settings, "FileName")
-                    row.enabled = False
-
-                    row = box.row()
-                    row.prop(obj.my_settings, "FilePath")
-                    row.enabled = False
-
-                    row = box.row()
-                    row.prop(obj.my_settings, "BlendshapePath")
-                    row.enabled = False
+                    row.enabled = isInObjectMode                    
 
                     box = layout.box() 
                     
@@ -1121,7 +1305,9 @@ classes = (
     Random_Sliders,
     GlobalSettings,
     Save_Selected_Vertex,
-    Link_Eye_Model
+    Link_Eye_Model,
+    Link_LEye_Vertex,
+    Link_REye_Vertex
         )
 
 def register():
