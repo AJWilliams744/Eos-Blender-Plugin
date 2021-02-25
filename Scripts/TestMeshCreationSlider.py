@@ -3,18 +3,14 @@ import eos
 import numpy as np
 import bmesh
 from enum import Enum
-import random
 import os.path
 import mathutils
 
 from numpy import random
 
-#baseLocation = "D:/Users/Alex/Documents/Personal/Uni/Diss/WorkFolder/eos/out/install/x86-Debug/"
 maxSlider = 20
 
-
-
-class ShapeKeeper(): # Create a dictionary with the path to model as key, model and value. check against mysetting property of locations 
+class ShapeKeeper(): # Stores model data for currently selected model
     base = ""
     modelPath = ""
     blendShapePath = ""
@@ -26,9 +22,9 @@ class SliderType(Enum):
     Colour = 1
     Expression = 2
 
-aShapeKeeper = ShapeKeeper()
+aShapeKeeper = ShapeKeeper() # Only one script is loaded so a object was needed
 
-def getChildren(obj):
+def getChildren(obj): # Get the children of the object
     children = []
     for ob in bpy.data.objects:
         if(ob.parent == obj):
@@ -36,67 +32,29 @@ def getChildren(obj):
 
     return children
 
-def getCoefficients(o):
+def getCoefficients(o): # return a 2D list containing all of the coefficients Shape, Colour, Expression
 
     shapeCount = o.my_settings.ShapeCount
     colourCount = o.my_settings.ColourCount
     expressionCount = o.my_settings.ExpressionCount
 
-    if len(o.sliders.sliderList) < shapeCount + colourCount + expressionCount : return
+    if len(o.sliders.sliderList) < shapeCount + colourCount + expressionCount : return # If the sliders haven't been created yet return None
 
     me = [[0.0]* shapeCount, [0.0]* colourCount, [0.0]* expressionCount]
 
-    for x in range(0,shapeCount):            
-
+    for x in range(0,shapeCount):           
         me[0][x] =  o.sliders.sliderList[x].value
-       # print(me[x])
-
     
-    for x in range(shapeCount,shapeCount + colourCount):           
-        #print(x)
+    for x in range(shapeCount,shapeCount + colourCount):
         me[1][x - shapeCount] =  o.sliders.sliderList[x].value
-        #print(me[x])
 
-    #print("-------------------------------------------")
-    for x in range(shapeCount + colourCount,shapeCount + colourCount + expressionCount):            
-        #print(x)
+    for x in range(shapeCount + colourCount,shapeCount + colourCount + expressionCount): # Sliders are stored in a 1D list
         me[2][x - shapeCount - colourCount] =  o.sliders.sliderList[x].value
-        #print(me[x])
+
 
     return me
 
-def refreshColours(mesh, coloursLocation, colours):
-
-    #print(colours)
-
-    if not mesh.vertex_colors:
-        mesh.vertex_colors.new()
-
-    colour_layer = mesh.vertex_colors['Col']
-
-    #print(colours)
-    #print(len(mesh.polygons))
-    #print(len(mesh.vertices))
-
-    i = 0
-    x = 0
-
-    ax = 0
-
-    for poly in mesh.polygons:
-
-        vertexLocation = coloursLocation[x]
-
-        for loop in poly.loop_indices:
-            color = [colours[vertexLocation[0]][0],colours[vertexLocation[1]][1],colours[vertexLocation[2]][2],1.0]
-            colour_layer.data[i].color = color
-            i += 1
-            pass
-        x += 1
-
-    return None
-
-def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth, shouldDelete):
+def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth, shouldDelete): # Refresh colours using the BM mesh instead of normal mesh (much faster)
 
     bm = bmesh.new()
     bm.from_mesh(mesh)
@@ -106,21 +64,17 @@ def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth, shouldDelete)
 
     colour_layer =  bm.loops.layers.color['color']
 
-    #print(colours)
-    #print(len(mesh.polygons))
-    #print(len(mesh.vertices))
-
     i = 0
     x = 0
 
     for face in bm.faces:
 
-        vertexLocation = coloursLocation[x]
-        face.smooth = shouldSmooth
+        vertexLocation = coloursLocation[x] # Get colours stored as [x,y,z] from eos list
+        face.smooth = shouldSmooth # Smooth each face if needed
 
         i = 0
-        for loop in face.loops:
-            color = [colours[vertexLocation[i]][0],colours[vertexLocation[i]][1],colours[vertexLocation[i]][2],1.0]
+        for loop in face.loops: # Loop each vertex (not always triangulated)
+            color = [colours[vertexLocation[i]][0],colours[vertexLocation[i]][1],colours[vertexLocation[i]][2],1.0] # Must include alpha
             loop[colour_layer] = color
             i += 1
            
@@ -134,11 +88,11 @@ def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth, shouldDelete)
 
             deleteVerts(bm, deletionVerts)
 
-    bm.to_mesh(mesh)
+    bm.to_mesh(mesh) # Convert bmesh back to blender mesh
 
     return None
 
-def getdeletionVerts():
+def getdeletionVerts(): # Load the file and collect vertices into a usable list
 
     scene = bpy.context.scene
     obj = bpy.context.object
@@ -146,7 +100,7 @@ def getdeletionVerts():
     fileName = obj.my_settings.VertexFileName
     filePath = scene.global_setting.GlobalVertexStore
 
-    if(not os.path.isfile(filePath + fileName)): return 
+    if(not os.path.isfile(filePath + fileName)): return # Return None if file doesn't exist
 
     f = open(filePath + fileName, "r")
     
@@ -162,19 +116,17 @@ def deleteVerts(bmMesh, vertsIndex):
     verts = [0] * len(vertsIndex)
     count = 0
 
-    bmMesh.verts.ensure_lookup_table()
+    bmMesh.verts.ensure_lookup_table() # Must be called each time a vertex is changed or deleted (Crashes otherwise)
 
-    #print(len(bmMesh.verts)) 
+    for v in vertsIndex: # Get list of verts to delete (must call above line if you need to look up vertex after deleting) 
 
-    for v in vertsIndex:
         verts[count] = bmMesh.verts[int(v)]   
-        #verts[count] = 0
         count += 1 
 
     for v in verts: 
         bmMesh.verts.remove(v)
     
-def createVertexMaterial(matName):
+def createVertexMaterial(matName): # Creates a new material and then refreshes (creates) nodes
 
     mat = bpy.data.materials.new(name = matName)
 
@@ -182,15 +134,12 @@ def createVertexMaterial(matName):
 
     return mat
 
-def refreshBasicVertexMaterial(mat):
+def refreshBasicVertexMaterial(mat): # Plugs vertex colour directly into diffuse shader (NOT USED)
 
-    #bpy.data.node_groups.clear()
     mat.use_nodes = True
 
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
-
-    #outputNode = ""
 
     links.clear()
     nodes.clear()
@@ -203,7 +152,7 @@ def refreshBasicVertexMaterial(mat):
     links.new(diffuse.outputs["BSDF"], output.inputs["Surface"])
     links.new(vertexColour.outputs["Color"], diffuse.inputs["Color"])
 
-def createBasicColourRamp(nodes, interpolation, posZero, colZero, posOne, colOne):
+def createBasicColourRamp(nodes, interpolation, posZero, colZero, posOne, colOne): # Creates and returns a basic 2 node colour ramp for shaders
 
     baseColourRamp = nodes.new(type = "ShaderNodeValToRGB")
     baseColourRamp.color_ramp.interpolation = interpolation
@@ -214,22 +163,19 @@ def createBasicColourRamp(nodes, interpolation, posZero, colZero, posOne, colOne
 
     return baseColourRamp
 
-def createMixRGBNode(nodes, blendType, factor):
+def createMixRGBNode(nodes, blendType, factor): # Creates and returns a basic mix rgb for shader
 
     baseMix = nodes.new(type = "ShaderNodeMixRGB")
     baseMix.blend_type = blendType
     baseMix.inputs[0].default_value = factor
     return baseMix
 
-def refreshAdvancedVertexMaterial(mat):
+def refreshAdvancedVertexMaterial(mat): # Creates and links necessary nodes for advanced skin shader (Values gained through trial and error in shader editor)
 
-    #bpy.data.node_groups.clear()
     mat.use_nodes = True
 
     nodes = mat.node_tree.nodes
     links = mat.node_tree.links
-
-    #outputNode = ""
 
     links.clear()
     nodes.clear()
@@ -320,13 +266,14 @@ def refreshAdvancedVertexMaterial(mat):
     bsdf.inputs['Transmission'].default_value = 0.0
     bsdf.inputs['Transmission Roughness'].default_value = 0.0
 
-def setMaterial(obj):
+def setMaterial(obj): # Refresh or create material for obj
     mat = bpy.data.materials.get("VertexColourMat")
 
     if(mat is None):
         mat = createVertexMaterial("VertexColourMat")
     else:
-        refreshAdvancedVertexMaterial(mat)
+        #refreshAdvancedVertexMaterial(mat)
+        pass
         
     
     if(not obj.data.materials):
@@ -404,9 +351,20 @@ def refreshModel(sliderObj):
         
         if(obj.my_settings.ColourCount == 0) :  
             smoothObject(mesh, shouldSmooth)
-        else:
-        #print(o.my_settings.ColourCount)
 
+            if(obj.my_settings.DeleteVertex):
+
+                deletionVerts = getdeletionVerts()    
+
+                if(not deletionVerts == None):
+                    bm = bmesh.new()
+                    bm.from_mesh(mesh)
+
+                    deleteVerts(bm, deletionVerts)
+
+                    bm.to_mesh(mesh)
+
+        else:
             refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth, obj.my_settings.DeleteVertex)
 
     if(obj.my_settings.HasEye and aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != "" and obj.my_settings.LeftEyeVertices != "" and obj.my_settings.RightEyeVertices != ""):
@@ -424,6 +382,16 @@ def refreshModel(sliderObj):
         if(int(rightVertex[1]) > len(obj.data.vertices)) : return
 
         handleEye(obj, int(rightVertex[0]), int(rightVertex[1]), aShapeKeeper.rightEye, obj.my_settings.EyeScaleOffset, obj.my_settings.RightEyePosOffset)
+
+        aShapeKeeper.rightEye.scale = aShapeKeeper.leftEye.scale
+
+        if(not obj.my_settings.DeleteVertex):
+            aShapeKeeper.leftEye.hide_set(True)
+            aShapeKeeper.rightEye.hide_set(True)
+        else:
+            aShapeKeeper.leftEye.hide_set(obj.my_settings.HideEyes)
+            aShapeKeeper.rightEye.hide_set(obj.my_settings.HideEyes)
+
 
 def handleEye(obj, leftVertex, rightVertex, eye, scaleOffset, posOffset):
 
@@ -990,18 +958,6 @@ class Random_Sliders(bpy.types.Operator):
 
         obj = context.object
         obj.my_settings.IsReseting = True # Stop the update being called during change
-
-        ############################ Basic Random ##################################################        
-
-        # for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount):             
-
-        #     if x < obj.my_settings.ShapeCount + obj.my_settings.ColourCount:
-        #         randomNum = (random.random() * 4) - 2
-        #         obj.sliders.sliderList[x].value = randomNum
-        #     else:
-        #         randomNum = (random.random() * 0.5) - 0.1
-        #         obj.sliders.sliderList[x].value = randomNum
-                
         
 
         ############################ Normal (Gaussian) Random ##################################################
@@ -1111,54 +1067,6 @@ class Main_PT_Panel(bpy.types.Panel):
                     row.prop(obj.my_settings, "BlendshapePath")
                     row.enabled = False
 
-                    box = layout.box() 
-                    row = box.row()
-                    row.operator('view3d.link_eye_model')  
-                    row.enabled = isInObjectMode
-
-                    row = box.row()
-                    row.prop(scene.global_setting, "GlobalEyePath", text = "Eye Path")
-                    row.enabled = isInObjectMode 
-
-                    if(aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != ""):
-                        row = box.row()
-                        row.prop(obj.my_settings, "HideEyes", text = "Hide Eyes")
-                        row.enabled = isInObjectMode 
-
-                    box = layout.box()  
-
-                    row = box.row()
-                    row.operator("view3d.link_leye_vertex")  
-                    row.enabled = isInObjectMode
-
-                    row = box.row()
-                    row.prop(obj.my_settings, "LeftEyeVertices")
-                    row.enabled = False 
-
-                    row = box.row()
-                    row.prop(obj.my_settings, "LeftEyePosOffset")
-                    row.enabled = isInObjectMode   
-
-                    box = layout.box()               
-
-                    row = box.row()
-                    row.operator("view3d.link_reye_vertex")  
-                    row.enabled = isInObjectMode                                     
-
-                    row = box.row()
-                    row.prop(obj.my_settings, "RightEyeVertices")
-                    row.enabled = False  
-
-                    row = box.row()
-                    row.prop(obj.my_settings, "RightEyePosOffset")
-                    row.enabled = isInObjectMode        
-
-                    box = layout.box()   
-
-                    row = box.row()
-                    row.prop(obj.my_settings, "EyeScaleOffset")
-                    row.enabled = isInObjectMode                
-
                     box = layout.box()  
 
                     row = box.row()
@@ -1179,8 +1087,57 @@ class Main_PT_Panel(bpy.types.Panel):
 
                     row = box.row()
                     row.prop(obj.my_settings, "DeleteVertex")
-                    row.enabled = isInObjectMode                    
+                    row.enabled = isInObjectMode     
 
+                    box = layout.box() 
+                    row = box.row()
+                    row.operator('view3d.link_eye_model')  
+                    row.enabled = isInObjectMode
+
+                    row = box.row()
+                    row.prop(scene.global_setting, "GlobalEyePath", text = "Eye Path")
+                    row.enabled = isInObjectMode 
+
+                    if(aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != ""):
+                        row = box.row()
+                        row.prop(obj.my_settings, "HideEyes", text = "Hide Eyes")
+                        row.enabled = isInObjectMode 
+
+                    box = layout.box()  
+
+                    row = box.row()
+                    row.operator("view3d.link_leye_vertex")  
+                    row.enabled = obj.my_settings.DeleteVertex
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "LeftEyeVertices")
+                    row.enabled = False 
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "LeftEyePosOffset")
+                    row.enabled = isInObjectMode   
+
+                    box = layout.box()               
+
+                    row = box.row()
+                    row.operator("view3d.link_reye_vertex")  
+                    row.enabled = obj.my_settings.DeleteVertex                                     
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "RightEyeVertices")
+                    row.enabled = False  
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "RightEyePosOffset")
+                    row.enabled = isInObjectMode        
+
+                    box = layout.box()   
+
+                    row = box.row()
+                    row.prop(obj.my_settings, "EyeScaleOffset")
+                    row.enabled = isInObjectMode                
+
+                    
                     box = layout.box() 
                     
                     row = box.row()
