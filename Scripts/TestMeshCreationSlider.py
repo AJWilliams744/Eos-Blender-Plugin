@@ -266,17 +266,14 @@ def refreshAdvancedVertexMaterial(mat): # Creates and links necessary nodes for 
     bsdf.inputs['Transmission'].default_value = 0.0
     bsdf.inputs['Transmission Roughness'].default_value = 0.0
 
-def setMaterial(obj): # Refresh or create material for obj
-    mat = bpy.data.materials.get("VertexColourMat")
+def setMaterial(obj): # Create material for obj
 
-    if(mat is None):
+    mat = bpy.data.materials.get("VertexColourMat") # Check to see if material exists in the scene
+
+    if(mat is None): # If mat doesn't exist create it 
         mat = createVertexMaterial("VertexColourMat")
-    else:
-        #refreshAdvancedVertexMaterial(mat)
-        pass
-        
     
-    if(not obj.data.materials):
+    if(not obj.data.materials): # If material not assigned to obj, assign it 
         obj.data.materials.append(mat)
         
 
@@ -287,46 +284,42 @@ def smoothObject(mesh, shouldSmooth):
         f.use_smooth = shouldSmooth          
     return
 
-def changedSmooth(self, context):
+def changedSmooth(self, context): # Called when bool (Smooth) in pannel changes
     obj = bpy.context.object
     mesh = obj.data
     smoothObject(mesh, obj.my_settings.SmoothShader)
     pass
 
-def refreshModel(sliderObj):
-
-    #if aShapeKeeper.base == "": return
+def refreshModel(sliderObj): # Refresh the model using the slider data
 
     obj = bpy.context.object
 
     scene = bpy.context.scene
 
-    if(obj.my_settings.IsReseting): return 
+    if(obj.my_settings.IsReseting): return # Stopes code being called every slider when group reseting (Blender is not thread safe)
 
     shouldSmooth = obj.my_settings.SmoothShader
 
-    coofficient = getCoefficients(obj)
+    coofficient = getCoefficients(obj) # Grab the coefficients in list form
 
-    if not(coofficient) : return
+    if not(coofficient) : return # If there are no coefficients stop
     
     mesh = obj.data
 
-    if not(aShapeKeeper.base):
-        #loadFaceModel() # This would crash as there is no way of accesing the original file path
-        return
+    if not(aShapeKeeper.base): return # Not sure if this is ever called, it's here just in case
     
     filePath = obj.my_settings.FilePath
     blendshapePath = obj.my_settings.BlendshapePath
 
     if(filePath == "" and blendshapePath == ""):
-        loadFaceModel(scene.global_setting.GlobalFilePath, scene.global_setting.GlobalBlendshapePath)
+        loadFaceModel(scene.global_setting.GlobalFilePath, scene.global_setting.GlobalBlendshapePath) # Load using the global settings if new model created
     else:
 
-        if((filePath != aShapeKeeper.modelPath or blendshapePath != aShapeKeeper.blendShapePath) and aShapeKeeper.base != ""):
-            print("OTHER MODEL CHANGED")
+        if((filePath != aShapeKeeper.modelPath or blendshapePath != aShapeKeeper.blendShapePath) and aShapeKeeper.base != ""): #If model in shape keep object is not the same
+            
             loadFaceModel(filePath, blendshapePath)
             
-            if(obj.my_settings.HasEye):
+            if(obj.my_settings.HasEye): # Store current eyes in shape keep object
                 children = getChildren(obj)
                 if(len(children == 2)):
                     aShapeKeeper.leftEye = children[0]
@@ -334,12 +327,10 @@ def refreshModel(sliderObj):
 
     morphModel = aShapeKeeper.base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
 
-    if((sliderObj.sliderType == SliderType.Colour.value or not mesh.vertex_colors) and obj.my_settings.ColourCount != 0 and not obj.my_settings.DeleteVertex):
+    if((sliderObj.sliderType == SliderType.Colour.value or not mesh.vertex_colors) and obj.my_settings.ColourCount != 0 and not obj.my_settings.DeleteVertex): # If only colours are changing
         refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth, False)
 
-    else:       
-
-        #i = 0
+    else: # If any vertex positions are changing
 
         mesh.clear_geometry()
 
@@ -347,9 +338,9 @@ def refreshModel(sliderObj):
         edges = []
         faces = morphModel.tvi
 
-        mesh.from_pydata(verts, edges, faces) 
+        mesh.from_pydata(verts, edges, faces) # Creates new mesh under the same object
         
-        if(obj.my_settings.ColourCount == 0) :  
+        if(obj.my_settings.ColourCount == 0) :  # This is also called in refresh colours (Faster if called in refresh so redundant code is needed)
             smoothObject(mesh, shouldSmooth)
 
             if(obj.my_settings.DeleteVertex):
@@ -367,6 +358,7 @@ def refreshModel(sliderObj):
         else:
             refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth, obj.my_settings.DeleteVertex)
 
+    # If the model has left and right eye coordinets move and scale eyes
     if(obj.my_settings.HasEye and aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != "" and obj.my_settings.LeftEyeVertices != "" and obj.my_settings.RightEyeVertices != ""):
 
         leftVertex = obj.my_settings.LeftEyeVertices.split(",")
@@ -383,17 +375,16 @@ def refreshModel(sliderObj):
 
         handleEye(obj, int(rightVertex[0]), int(rightVertex[1]), aShapeKeeper.rightEye, obj.my_settings.EyeScaleOffset, obj.my_settings.RightEyePosOffset)
 
-        aShapeKeeper.rightEye.scale = aShapeKeeper.leftEye.scale
+        aShapeKeeper.rightEye.scale = aShapeKeeper.leftEye.scale # If the user doesn't pick mirrored vertices just use left eye for both scales
 
-        if(not obj.my_settings.DeleteVertex):
+        if(not obj.my_settings.DeleteVertex): # Breaks if deleted vertex comes back so the eyes are hidden
             aShapeKeeper.leftEye.hide_set(True)
             aShapeKeeper.rightEye.hide_set(True)
         else:
             aShapeKeeper.leftEye.hide_set(obj.my_settings.HideEyes)
             aShapeKeeper.rightEye.hide_set(obj.my_settings.HideEyes)
 
-
-def handleEye(obj, leftVertex, rightVertex, eye, scaleOffset, posOffset):
+def handleEye(obj, leftVertex, rightVertex, eye, scaleOffset, posOffset): # Move and scale eye
 
     leftVec = mathutils.Vector(obj.data.vertices[leftVertex].co)
     rightVec = mathutils.Vector(obj.data.vertices[rightVertex].co)
@@ -406,11 +397,12 @@ def handleEye(obj, leftVertex, rightVertex, eye, scaleOffset, posOffset):
 
     eye.location = (newpos[0] * posOffset[0], newpos[1] * posOffset[1], newpos[2] * posOffset[2])
 
-def resize(self, context): 
+def resize(self, context): # if any of the shape, colour, expression sliders are changed refresh the model
     refreshModel(self)
     return
 
-def createBlenderMesh(mesh):
+def createBlenderMesh(mesh): # Create a blender mesh using eos mesh model data
+
     blendObj = bpy.data.meshes.new("Morphable Object")  # add the new mesh    
     obj = bpy.data.objects.new(blendObj.name, blendObj)
     col = bpy.data.collections.get("Collection")
@@ -425,23 +417,11 @@ def createBlenderMesh(mesh):
 
     return obj
 
-def loadFaceModel(modelPath, blendshapePath = ""):
+def loadFaceModel(modelPath, blendshapePath = ""): # Load model into shape keeper
 
     morphablemodel_with_expressions = ""
 
-    #modelPath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_blendshapes_with_colour.bin"
-    #blendshapesPath = baseLocation + "share/expression_blendshapes_3448.bin"
-
     model = eos.morphablemodel.load_model(modelPath)
-
-    #model = eos.morphablemodel.load_model(baseLocation + "share/sfm_shape_3448.bin")
-    #morphablemodel_with_expressions = eos.morphablemodel.load_model(baseLocation + "share/sfm_shape_3448.bin")
-
-    #model = eos.morphablemodel.load_model("D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_with_colour.bin")
-
-    #model = eos.morphablemodel.load_model("D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/LYHM_global.bin")
-
-    #model = eos.morphablemodel.load_model("D:/Users/Alex/Documents/Personal/Uni/Diss/Not_OpenSource/4dfm_head_v1.2_blendshapes_with_colour.bin")
 
     print("HAS MODEL THING :")
     print(model.get_expression_model_type())
@@ -450,115 +430,72 @@ def loadFaceModel(modelPath, blendshapePath = ""):
 
     if(modelType == model.ExpressionModelType(0) and blendshapePath != ""):
 
-        #print("I MADE IT HERE")
         blendshapes = eos.morphablemodel.load_blendshapes(blendshapePath)
-
-        #print(blendshapes)
         
         morphablemodel_with_expressions = eos.morphablemodel.MorphableModel(model.get_shape_model(), blendshapes,
                                                                         color_model=eos.morphablemodel.PcaModel(),
                                                                         vertex_definitions=None,
                                                                         texture_coordinates=model.get_texture_coordinates())
 
-    #blendshapes = eos.morphablemodel.load_blendshapes(baseLocation + "share/expression_blendshapes_3448.bin")
-
-    #print(blendshapes)
-    #print("----------------------------------")
-    
-    #print(blendshapes)
-
-    # 
-
-    # morphablemodel_with_expressions = eos.morphablemodel.MorphableModel(model.get_shape_model(), blendshapes.get_expression_model(),
-    #                                                                     color_model=eos.morphablemodel.PcaModel(),
-    #                                                                     vertex_definitions=None,
-    #                                                                     texture_coordinates=model.get_texture_coordinates())
-
     aShapeKeeper.base = model
 
     aShapeKeeper.modelPath = modelPath
     aShapeKeeper.blendShapePath = blendshapePath
-
-   # print("OLD FILE PATH" + blendshapePath)
 
     if(morphablemodel_with_expressions != ""):
         aShapeKeeper.base = morphablemodel_with_expressions
     else:
        return model
 
-    
-    
     return morphablemodel_with_expressions
 
-def createBaseShape(FilePath, blendShapePath = ""):
+def createBaseShape(FilePath, blendShapePath = ""): # Create the base morphable model, assign sliders to model
     
     base = loadFaceModel(FilePath, blendShapePath)
 
-    #print(base)
-
-    secondMesh = base.draw_sample([0,0,0],[0,0,0])
+    secondMesh = base.draw_sample([0,0,0],[0,0,0]) # Draw the basic model
 
     obj = createBlenderMesh(secondMesh)
 
-    #obj.my_settings.IsReseting = True
-
     modelType = base.get_expression_model_type()
 
-    print("HAS other THING :")
-    print(modelType)
-
-    if(modelType == base.ExpressionModelType(0)):
+    if(modelType == base.ExpressionModelType(0)): # If no model type
         obj.my_settings.ExpressionCount = 0
         obj.my_settings.ShapeCount = 0
         obj.my_settings.ColourCount = 0
 
-    elif(modelType == base.ExpressionModelType.Blendshapes):
+    elif(modelType == base.ExpressionModelType.Blendshapes): # If blenshape model type
         obj.my_settings.ExpressionCount = len(base.get_expression_model())
         obj.my_settings.ShapeCount = base.get_shape_model().get_num_principal_components()
         obj.my_settings.ColourCount = base.get_color_model().get_num_principal_components()
 
-    else:
+    else: # If pca model type 
         obj.my_settings.ExpressionCount = base.get_expression_model().get_num_principal_components() 
         obj.my_settings.ShapeCount = base.get_shape_model().get_num_principal_components()
         obj.my_settings.ColourCount = base.get_color_model().get_num_principal_components()
 
-    #print(obj.my_settings.ColourCount)
-    if(obj.my_settings.ColourCount != 0): setMaterial(obj)
+    if(obj.my_settings.ColourCount != 0): setMaterial(obj) # If the model has a colour model set its material to advaced skin material 
 
-    #print(obj.my_settings.ShapeCount)
-    #print(obj.my_settings.ColourCount)
-    #print(obj.my_settings.ExpressionCount)
-
-    if not obj.get('_RNA_UI'):
+    if not obj.get('_RNA_UI'): # Not sure but it's needed otherwise you can't add dynamic properties to model
         obj['_RNA_UI'] = {}
 
-    for x in range(0,obj.my_settings.ShapeCount + obj.my_settings.ColourCount + obj.my_settings.ExpressionCount):
+    for x in range(0,obj.my_settings.ShapeCount + obj.my_settings.ColourCount + obj.my_settings.ExpressionCount): # Create sliders (SliderProp List) and assign slider types to each
         prop = obj.sliders.sliderList.add()
         prop.value = 0
 
         if(x < obj.my_settings.ShapeCount) : 
             prop.sliderType = SliderType.Shape.value
-           # print("Shape")
             continue
 
         if(x < obj.my_settings.ColourCount + obj.my_settings.ShapeCount ) :
             prop.sliderType = SliderType.Colour.value
-            #print("Colour")
             continue
 
-        #print("EXPRESS")
         prop.sliderType = SliderType.Expression.value
-
-   
-
-    #print(aShapeKeeper.base)
-    #obj.my_settings.IsReseting = False
-
-    #obj.sliders.sliderList[0].value = 0.0 #Trigger an inital refesh
 
     return base
 
-def getLabelText(showMore, sliderCount):
+def getLabelText(showMore, sliderCount): # Formats the correct label for hiding and showing slider
 
     if(sliderCount < maxSlider): return ""
     
@@ -566,21 +503,17 @@ def getLabelText(showMore, sliderCount):
 
     return "Show Extra Sliders (" + str(maxSlider) + " / " + str(sliderCount) + ")"
 
-def dirtyRefresh(self, context):
+def dirtyRefresh(self, context): # If the data is dirty (Changed without update) refresh the model
     obj = bpy.context.object
     obj.sliders.sliderList[0].value = obj.sliders.sliderList[0].value
 
-def changedHideEyes(self, context):
+def changedHideEyes(self, context): # If bool hide eyes had changed
     obj = context.object
-    # children = getChildren(obj)
-
-    # for child in children:
-    #     child.hide_set(obj.my_settings.HideEyes)
     
     aShapeKeeper.leftEye.hide_set(obj.my_settings.HideEyes)
     aShapeKeeper.rightEye.hide_set(obj.my_settings.HideEyes)
 
-def getEyeModel(filepath, objName, link):
+def getEyeModel(filepath, objName, link): # Load and create the eye model
 
     with bpy.data.libraries.load(filepath, link=link) as (data_from, data_to):
                 data_to.objects = [name for name in data_from.objects if name.startswith(objName)]
@@ -588,10 +521,10 @@ def getEyeModel(filepath, objName, link):
     #link object to current scene
     for obj in data_to.objects:
         if obj is not None:            
-            bpy.context.collection.objects.link(obj) # Blender 2.8x
+            bpy.context.collection.objects.link(obj)
             return obj
 
-class MySettings(bpy.types.PropertyGroup):
+class MySettings(bpy.types.PropertyGroup): # All the data stored on every created object
    
     ExpressionCount : bpy.props.IntProperty(name = "ExpressionCount", description = "Number of Expressions",default = 0)
     ColourCount : bpy.props.IntProperty(name = "ColourCount", description = "Number of Colour",default = 0) 
@@ -629,39 +562,37 @@ class MySettings(bpy.types.PropertyGroup):
     LeftEyePosOffset : bpy.props.FloatVectorProperty(name = "Pos offset", description = "Offset for left eye position", default = (1,1,1), update = dirtyRefresh)
     RightEyePosOffset : bpy.props.FloatVectorProperty(name = "Pos offset", description = "Offset for right eye position", default = (1,1,1), update = dirtyRefresh)
 
-class GlobalSettings(bpy.types.PropertyGroup):
+class GlobalSettings(bpy.types.PropertyGroup): # All the data stored in the scene
     GlobalFilePath : bpy.props.StringProperty(subtype = "FILE_PATH")
     GlobalBlendshapePath : bpy.props.StringProperty(name = "Blendshape Path:", subtype = "FILE_PATH")
     GlobalVertexStore : bpy.props.StringProperty(subtype = "FILE_PATH")
     GlobalEyePath : bpy.props.StringProperty(subtype = "FILE_PATH")
 
-class SliderProp(bpy.types.PropertyGroup):
+class SliderProp(bpy.types.PropertyGroup): # The data in a slider property
+
     value : bpy.props.FloatProperty(name = "Length",min = -3, max = 3, description = "DataLength", default = 0, update = resize, options = {'ANIMATABLE'})
-    #sliderType : bpy.props.EnumProperty(name = "SliderType", items = [("0", "Shape",""), ("1", "Expression",""), ("2", "Colour","")], default = "None")
     sliderType : bpy.props.IntProperty(name = "SliderType", description = "Int enum value for the slider type", default = 0)
 
-class SliderList(bpy.types.PropertyGroup):
+class SliderList(bpy.types.PropertyGroup): # The list of sliders
     sliderList : bpy.props.CollectionProperty(type=SliderProp)
 
-class Create_New_Model(bpy.types.Operator):
+class Create_New_Model(bpy.types.Operator): # Create model button
     bl_idname = "view3d.create_new_model"
     bl_label = "Create New Model"
     bl_destription = "A button to create a new morphable face"
 
-    def execute(self, context):
+    def execute(self, context): # Create model button pressed 
 
         scene = context.scene
-        
 
-        #print(scene.global_setting.GlobalFilePath[-3:])
-        if(scene.global_setting.GlobalFilePath[-3:] != "bin") :
+        if(scene.global_setting.GlobalFilePath[-3:] != "bin") : # If file is not compatible 
             self.report({"ERROR"}, "File not compatible")
             scene.global_setting.GlobalFilePath = ""
             return {'FINISHED'}
 
         blendshapePath = scene.global_setting.GlobalBlendshapePath
 
-        if(blendshapePath[-3:] != "bin" and not blendshapePath == "") :
+        if(blendshapePath[-3:] != "bin" and not blendshapePath == "") :  # If file is not compatible 
             self.report({"ERROR"}, "File not compatible")
             scene.global_setting.GlobalBlendshapePath = ""
             return {'FINISHED'}
@@ -670,21 +601,21 @@ class Create_New_Model(bpy.types.Operator):
         createBaseShape(scene.global_setting.GlobalFilePath, blendshapePath)
         obj = context.object
 
-        obj.my_settings.FilePath = scene.global_setting.GlobalFilePath
+        obj.my_settings.FilePath = scene.global_setting.GlobalFilePath # Add un-editable to pannel for user debugging 
         obj.my_settings.FileName = (scene.global_setting.GlobalFilePath.split("\\")[-1])[:-4]
 
         obj.my_settings.BlendshapePath = blendshapePath
 
-        obj.scale = (0.03, 0.03, 0.03)
+        obj.scale = (0.03, 0.03, 0.03) # The head is huge on import
 
         return {'FINISHED'}
 
-class Save_Selected_Vertex(bpy.types.Operator):
+class Save_Selected_Vertex(bpy.types.Operator): # Save selected vertices button
     bl_idname = "view3d.save_selected_vertex"
     bl_label = "Save Selected Verticies"
     bl_destription = "A button to save selected vertecies"
 
-    def execute(self, context):
+    def execute(self, context): # Button pressed
 
         scene = context.scene   
 
@@ -692,10 +623,9 @@ class Save_Selected_Vertex(bpy.types.Operator):
 
         mesh =  obj.data
 
-        selectedVerts = [v for v in mesh.vertices if v.select]     
+        selectedVerts = [v for v in mesh.vertices if v.select] # Loop through all vertices and collect selected vertices
 
-        #print(scene.global_setting.GlobalVertexStore[-2:])
-        if(scene.global_setting.GlobalVertexStore[-1:] != "\\" and scene.global_setting.GlobalVertexStore[-1:] != "/") :
+        if(scene.global_setting.GlobalVertexStore[-1:] != "\\" and scene.global_setting.GlobalVertexStore[-1:] != "/") : # Must be a folder path
             self.report({"ERROR"}, "File not compatible")
             scene.global_setting.GlobalVertexStore = ""
             return {'FINISHED'}   
@@ -704,16 +634,15 @@ class Save_Selected_Vertex(bpy.types.Operator):
         fileName = obj.my_settings.VertexFileName
         filePath = scene.global_setting.GlobalVertexStore  
 
-        if(fileName == ""):
+        if(fileName == ""): # If file name empty use this instead
             fileName = "VertexIndices"
 
-        if(fileName[-4:] == ".txt"):
+        if(fileName[-4:] == ".txt"): # Remove .txt if it's there
             fileName = fileName[:-4]
 
-        shortPath = fileName
-        #print(fileName)
+        shortPath = fileName # Filename gets changed so this is the original
 
-        if (not obj.my_settings.VertexOverwrite): 
+        if (not obj.my_settings.VertexOverwrite): # If user wants a unique name and the previous name not overwritten add _x
 
             if(len(shortPath) > 2):
                 if(shortPath[-2] == "_"):
@@ -723,7 +652,6 @@ class Save_Selected_Vertex(bpy.types.Operator):
 
                 fileNumber += 1
                 fileName = shortPath + "_" + str(fileNumber) 
-                #filePath = scene.global_setting.GlobalVertexStore
 
         fileName += ".txt"
 
@@ -733,7 +661,7 @@ class Save_Selected_Vertex(bpy.types.Operator):
 
         first = True
 
-        for v in selectedVerts:
+        for v in selectedVerts: # Write data as x,y,z using the index of the vertex
             if(first):
                 f.write(str(v.index))
                 first = False
@@ -742,11 +670,11 @@ class Save_Selected_Vertex(bpy.types.Operator):
 
         f.close()
 
-        obj.sliders.sliderList[0].value = obj.sliders.sliderList[0].value
+        obj.sliders.sliderList[0].value = obj.sliders.sliderList[0].value # Refresh model
         
         return {'FINISHED'}
 
-class Create_Copy_Model(bpy.types.Operator):
+class Create_Copy_Model(bpy.types.Operator): # Create a copy of selected model button
     bl_idname = "view3d.create_copy_model"
     bl_label = "Create Copy Model"
     bl_destription = "A button to create a new morphable face"
@@ -758,8 +686,6 @@ class Create_Copy_Model(bpy.types.Operator):
         filePath = obj.my_settings.FilePath
         blendshapePath = obj.my_settings.BlendshapePath
 
-        #print("FILE PATH" + blendshapePath)
-
         createBaseShape(filePath, blendshapePath)
 
         obj = context.object #Grab the new object
@@ -768,41 +694,36 @@ class Create_Copy_Model(bpy.types.Operator):
         obj.my_settings.FileName = (filePath.split("\\")[-1])[:-4]
 
         obj.my_settings.BlendshapePath = blendshapePath
-        obj.scale = (0.03, 0.03, 0.03)
+        obj.scale = (0.03, 0.03, 0.03) # Object huge on import
         
 
         return {'FINISHED'}
 
-class Link_Eye_Model(bpy.types.Operator):
+class Link_Eye_Model(bpy.types.Operator): # Link eyes button
     bl_idname = "view3d.link_eye_model"
     bl_label = "Create Eye Model"
     bl_destription = "A button to create a new eye model"
 
     def execute(self, context):
-        
-        # file_path = "D:/Users/Alex/Documents/Personal/Uni/Diss/Repo/MorphableFaces/BlenderFiles/Eye.blend"
-        # inner_path = 'Object'
-        # object_name = 'Eye'
-        
-        # eye = bpy.ops.wm.append(
-        #     filepath=os.path.join(file_path, inner_path, object_name),
-        #     directory=os.path.join(file_path, inner_path),
-        #     filename=object_name
-        # )
 
         head = context.object
-        
-       # path to the blend
-        filepath = "D:/Users/Alex/Documents/Personal/Uni/Diss/Repo/MorphableFaces/BlenderFiles/Eye.blend"
 
-        # link all objects starting with 'Cube'
+        scene = context.scene   
+
+        filepath = scene.global_setting.GlobalEyePath
+
+        if(filepath[-5:] != "blend") : # If file is not compatible 
+            self.report({"ERROR"}, "File not compatible")
+            scene.global_setting.GlobalEyePath = ""
+            return {'FINISHED'}
+
         leftEye = getEyeModel(filepath, "Eye", False)
         rightEye = getEyeModel(filepath, "Eye", False)
 
-        leftEye.parent = head
+        leftEye.parent = head # Parent both eyes
         rightEye.parent = head
 
-        leftEye.scale = (11.6496,11.6496,11.6496)
+        leftEye.scale = (11.6496,11.6496,11.6496) # These is a guess to get the eye visible to the user
         rightEye.scale = (11.6496,11.6496,11.6496)
 
         leftEye.location = (-30.9127, 24.1305, 72.3501)
@@ -818,7 +739,7 @@ class Link_Eye_Model(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class Link_LEye_Vertex(bpy.types.Operator):
+class Link_LEye_Vertex(bpy.types.Operator): # Link left eye vetices button
     bl_idname = "view3d.link_leye_vertex"
     bl_label = "Link Left Eye Vertex"
     bl_destription = "A button to link two verticies for the eye"
@@ -837,24 +758,25 @@ class Link_LEye_Vertex(bpy.types.Operator):
         if(not len(children) == 2):
             self.report({"ERROR"}, "Too many eyes")
             return {'FINISHED'}
-
-        print(children)
       
         leftEye = children[0]   
 
         mesh =  head.data
 
-        selectedVerts = [v for v in mesh.vertices if v.select]
+        selectedVerts = [v for v in mesh.vertices if v.select] # Loop through vertices and collect selected vertices
 
         if(not len(selectedVerts) == 2):
             self.report({"ERROR"}, "2 Verts haven't been selected")
             return {'FINISHED'}
 
-        head.my_settings.LeftEyeVertices = str(selectedVerts[0].index) + "," + str(selectedVerts[1].index)
+        head.my_settings.LeftEyeVertices = str(selectedVerts[0].index) + "," + str(selectedVerts[1].index) # Blender doens't store lists so keep it as a string 
+
+        if(aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != ""): # Only refresh if both left and right eye have been set
+            head.sliders.sliderList[0].value = head.sliders.sliderList[0].value
 
         return {'FINISHED'}
 
-class Link_REye_Vertex(bpy.types.Operator):
+class Link_REye_Vertex(bpy.types.Operator):# Link right eye vetices button
     bl_idname = "view3d.link_reye_vertex"
     bl_label = "Link Right Eye Vertex"
     bl_destription = "A button to link two verticies for the eye"
@@ -880,17 +802,20 @@ class Link_REye_Vertex(bpy.types.Operator):
 
         mesh =  head.data
 
-        selectedVerts = [v for v in mesh.vertices if v.select]
+        selectedVerts = [v for v in mesh.vertices if v.select] # Loop through vertices and collect selected vertices
 
         if(not len(selectedVerts) == 2):
             self.report({"ERROR"}, "2 Verts haven't been selected")
             return {'FINISHED'}
 
-        head.my_settings.RightEyeVertices = str(selectedVerts[0].index) + "," + str(selectedVerts[1].index)
+        head.my_settings.RightEyeVertices = str(selectedVerts[0].index) + "," + str(selectedVerts[1].index) # Blender doens't store lists so keep it as a string
+
+        if(aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != ""): # Only refresh if both left and right eye have been set
+            head.sliders.sliderList[0].value = head.sliders.sliderList[0].value
 
         return {'FINISHED'}
 
-class Show_More_Colour(bpy.types.Operator):
+class Show_More_Colour(bpy.types.Operator): # Show more colour sliders button
     bl_idname = "view3d.show_more_colour"
     bl_label = "Show more colour sliders"
     bl_destription = "A button to show more colour sliders"
@@ -903,7 +828,7 @@ class Show_More_Colour(bpy.types.Operator):
 
         return {'FINISHED'}
         
-class Show_More_Shape(bpy.types.Operator):
+class Show_More_Shape(bpy.types.Operator): # show more shape sliders button
     bl_idname = "view3d.show_more_shape"
     bl_label = "Show more shape sliders"
     bl_destription = "A button to show more shape sliders"
@@ -916,7 +841,7 @@ class Show_More_Shape(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class Show_More_Expression(bpy.types.Operator):
+class Show_More_Expression(bpy.types.Operator): # show more expression sliders button
     bl_idname = "view3d.show_more_expression"
     bl_label = "Show more expression sliders"
     bl_destription = "A button to show more expression sliders"
@@ -929,7 +854,7 @@ class Show_More_Expression(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class Reset_Sliders(bpy.types.Operator):
+class Reset_Sliders(bpy.types.Operator): # Resets all sliders to zero
     bl_idname = "view3d.reset_sliders"
     bl_label = "Resets all the sliders to zero"
     bl_destription = "A button to reset all the sliders"
@@ -949,7 +874,7 @@ class Reset_Sliders(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class Random_Sliders(bpy.types.Operator):
+class Random_Sliders(bpy.types.Operator): # Randomise the sliders
     bl_idname = "view3d.random_sliders"
     bl_label = "Randomizes all the sliders"
     bl_destription = "A button to radomize all the sliders"
@@ -962,13 +887,9 @@ class Random_Sliders(bpy.types.Operator):
 
         ############################ Normal (Gaussian) Random ##################################################
 
-        normalListShape = random.normal(loc = 0, scale = obj.my_settings.ShapeSD, size = (obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount))
-        normalListColour = random.normal(loc = 0, scale = obj.my_settings.ColourSD, size = (obj.my_settings.ColourCount))
-        normalListExp = random.normal(loc = 0, scale = obj.my_settings.ExpreSD, size = (obj.my_settings.ExpressionCount))
-
-        # for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount):
-
-        #     obj.sliders.sliderList[x].value = normalList[x]
+        normalListShape = random.normal(loc = 0, scale = obj.my_settings.ShapeSD, size = obj.my_settings.ShapeCount) # Create gaussian random lists using values inputed by user
+        normalListColour = random.normal(loc = 0, scale = obj.my_settings.ColourSD, size = obj.my_settings.ColourCount)
+        normalListExp = random.normal(loc = 0, scale = obj.my_settings.ExpreSD, size = obj.my_settings.ExpressionCount)
 
         for x in range(0, obj.my_settings.ShapeCount + obj.my_settings.ExpressionCount + obj.my_settings.ColourCount):             
 
@@ -991,7 +912,7 @@ class Random_Sliders(bpy.types.Operator):
 
         return {'FINISHED'}
 
-class Main_PT_Panel(bpy.types.Panel):
+class Main_PT_Panel(bpy.types.Panel): # The main pannel
     bl_idname = "MORPH_PT_Panel"
     bl_label = "Morph Panel"
     bl_category = "Morph Addon"
@@ -1003,7 +924,7 @@ class Main_PT_Panel(bpy.types.Panel):
         scene = context.scene
         obj = context.object
 
-        box = layout.box() 
+        box = layout.box() # Creates a new section in the pannel
         
         isInObjectMode = True
 
@@ -1022,15 +943,12 @@ class Main_PT_Panel(bpy.types.Panel):
         row.prop(scene.global_setting, "GlobalBlendshapePath", text = "Blendshape Path")
         row.enabled = isInObjectMode        
 
-        #box = layout.box() 
-
         if(obj != None):
 
             objType = getattr(obj, "type", "")
 
             if(objType == "MESH"):                             
 
-                #ob = context.active_object
                 box = layout.box() 
 
                 row = box.row()
@@ -1045,9 +963,7 @@ class Main_PT_Panel(bpy.types.Panel):
                 row.prop(obj.my_settings, "SmoothShader")
                 row.enabled = isInObjectMode     
 
-               
-
-                if(shapeCount > 0 or colourCount > 0 or expressionCount > 0):
+                if(shapeCount > 0 or colourCount > 0 or expressionCount > 0): # If the object is a morphable head
 
                     box = layout.box()  
 
@@ -1057,7 +973,7 @@ class Main_PT_Panel(bpy.types.Panel):
 
                     row = box.row()
                     row.prop(obj.my_settings, "FileName")
-                    row.enabled = False
+                    row.enabled = False # Disable editing
 
                     row = box.row()
                     row.prop(obj.my_settings, "FilePath")
@@ -1098,7 +1014,7 @@ class Main_PT_Panel(bpy.types.Panel):
                     row.prop(scene.global_setting, "GlobalEyePath", text = "Eye Path")
                     row.enabled = isInObjectMode 
 
-                    if(aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != ""):
+                    if(aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != ""): # Only show if both eyes exist
                         row = box.row()
                         row.prop(obj.my_settings, "HideEyes", text = "Hide Eyes")
                         row.enabled = isInObjectMode 
@@ -1107,7 +1023,7 @@ class Main_PT_Panel(bpy.types.Panel):
 
                     row = box.row()
                     row.operator("view3d.link_leye_vertex")  
-                    row.enabled = obj.my_settings.DeleteVertex
+                    row.enabled = obj.my_settings.DeleteVertex and isInObjectMode
 
                     row = box.row()
                     row.prop(obj.my_settings, "LeftEyeVertices")
@@ -1121,7 +1037,7 @@ class Main_PT_Panel(bpy.types.Panel):
 
                     row = box.row()
                     row.operator("view3d.link_reye_vertex")  
-                    row.enabled = obj.my_settings.DeleteVertex                                     
+                    row.enabled = obj.my_settings.DeleteVertex and isInObjectMode                                      
 
                     row = box.row()
                     row.prop(obj.my_settings, "RightEyeVertices")
@@ -1135,8 +1051,7 @@ class Main_PT_Panel(bpy.types.Panel):
 
                     row = box.row()
                     row.prop(obj.my_settings, "EyeScaleOffset")
-                    row.enabled = isInObjectMode                
-
+                    row.enabled = isInObjectMode      
                     
                     box = layout.box() 
                     
@@ -1162,13 +1077,7 @@ class Main_PT_Panel(bpy.types.Panel):
                     row.operator('view3d.reset_sliders')
                     row.enabled = isInObjectMode   
 
-                    #box = layout.box()                 
-                       
-
-                #row = box.row()
-                #row.prop(obj.my_settings, "reverse")
-
-                if(shapeCount > 0):
+                if(shapeCount > 0): # Handle Shape Sliders
                     box = layout.box() 
                     row = box.row()
                     row.label(text = "Shape: ")
@@ -1180,21 +1089,23 @@ class Main_PT_Panel(bpy.types.Panel):
                     if(obj.my_settings.ShapeShowMore): showMoreCount = shapeCount - maxSlider
 
                     if(labelText != ""):
+
                         row = box.row()
-                        #labelText += " (" + str(maxSlider + showMoreCount) + " / " + str(cooCount) + ")"
                         row.operator('view3d.show_more_shape', text = labelText)  
                         row.enabled = isInObjectMode
                         row = box.row()
 
                     
                     cf = row.grid_flow(row_major = True, columns = 3, align = False)        
-                    row.enabled = isInObjectMode    
-                    for x in range(0,shapeCount):             
+                    row.enabled = isInObjectMode   
+
+                    for x in range(0,shapeCount):  
+
                         if x > maxSlider + showMoreCount: break
                         k = "line_%d" % x   
-                        cf.prop(obj.sliders.sliderList[x], "value", text = str(x)+ ":")
+                        cf.prop(obj.sliders.sliderList[x], "value", text = str(x)+ ":") # Get the correct slider
 
-                if(colourCount > 0):
+                if(colourCount > 0): # Handle Colour Sliders
                     box = layout.box() 
                     row = box.row()
                     row.label(text = "Colour: ")
@@ -1206,8 +1117,8 @@ class Main_PT_Panel(bpy.types.Panel):
                     if(obj.my_settings.ColourShowMore): showMoreCount = colourCount + shapeCount - maxSlider
 
                     if(labelText != ""):
+
                         row = box.row()
-                        #labelText += " (" + str(maxSlider + showMoreCount) + " / " + str(colourCount) + ")"
                         row.operator('view3d.show_more_colour', text = labelText )  
                         row.enabled = isInObjectMode
                         row = box.row()
@@ -1215,13 +1126,13 @@ class Main_PT_Panel(bpy.types.Panel):
                     cf = row.grid_flow(row_major = True, columns = 3, align = False)    
                     row.enabled = isInObjectMode                 
                                
-                    for x in range(shapeCount,shapeCount + colourCount):  
+                    for x in range(shapeCount,shapeCount + colourCount): 
+
                         if(x - shapeCount) > maxSlider + showMoreCount : break
                         k = "line_%d" % x   
-                        #print(k)
                         cf.prop(obj.sliders.sliderList[x], "value", text = str(x - shapeCount)+ ":")
                 
-                if(expressionCount > 0):
+                if(expressionCount > 0): # Handle Expression Sliders
                     box = layout.box() 
                     row = box.row()
                     row.label(text = "Expression: ")
@@ -1242,10 +1153,10 @@ class Main_PT_Panel(bpy.types.Panel):
 
                     if(obj.my_settings.ExpressionShowMore): showMoreCount = shapeCount + colourCount + expressionCount - maxSlider
 
-                    for x in range(shapeCount + colourCount, shapeCount + colourCount + expressionCount):             
+                    for x in range(shapeCount + colourCount, shapeCount + colourCount + expressionCount):   
+
                         if( x - shapeCount - colourCount > maxSlider + showMoreCount) : break
                         k = "line_%d" % x    
-                        #cf.prop(obj, '["' + k + '"]')
                         cf.prop(obj.sliders.sliderList[x], "value", text = str(x - shapeCount - colourCount) + ":") 
 
 classes = (
@@ -1287,5 +1198,3 @@ if __name__ == "__main__":
     except:
         pass
     register()
-
-  
