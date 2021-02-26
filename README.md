@@ -1,16 +1,18 @@
 # Eos Blender Plugin
 Code for Blender plugin using Eos
 
-INSTALL PLUGIN
+Eos for python [click here](https://pypi.org/project/eos-py/)
+
+### Install Plugin
 	Edit->Prefrences->Add-ons->Install
 	Tick Eos Interface to enable or disable
 
-LOADING MODEL
+### Loading Model
 	Select file with model
 	If additional blendshape file is needed select that too
 	Click "Create New Model"
 
-DELETING EYE VERTICES
+### Deleting Eye Vertices
 	Select the folder to store the txt files of vertices
 	Choose a file name, it will give a name if left blank
 	Choose whether to overwrite the same named file or create a new one (if file exists name + "_X" will be added for you)
@@ -20,37 +22,37 @@ DELETING EYE VERTICES
 
 	(You can select premade files by typing in the filename and choosing the correct folder)
 
-ADDING EYE
+### Adding Eye
 	Select the file "eye.blend" from the repository
 	Click "Create Eye Model" button
 	
-LINKING EYES TO SHAPE MOVEMENTS
+### Linking Eyes to Shape Movements
 	With "Hide Vertex" ticked go into edit mode
 	Pick two vertices located on each side of the left eye
 	Go to object mode and click "Link Left Eye Vertices"
 	You will see the index of both vertices in the box below
 	Repeat for right eye
 	
-CORRECTING EYE SHAPE
+### Correcting Eye Shape
 	Use the position offsets to place each eye in the correct place
 	Use the "Eye Scale Offset" to get the scale right
 
-RANDOMIZING EXPRESSIONS
+### Randomising Expressions
 	Each slider controls the standard deviation a gaussian random distribution
 	Choose desired SD for each and then click "Randomizes all the sliders"
 	Leave it zero if you don't want it to randomize that value
 
-RESETTING SLIDERS
+### Resetting Sliders
 	Click "Resets all the sliders to zero" button
 
-CHANGING SLIDERS
+### Changing Sliders
 	Max shown is 20 until the show more button pressed
 	Adjust sliders as you want
 
-CHANGING EYE COLOUR
+### Changing Eye Colour
 	
 
-RENDERING TIPS
+### Rendering Tips
 	If using Eevee and the eyes enable "Screen Space Reflection" in Scene and enable "Refraction" in "Screen Space Reflection"
 	For best results render using cycles and enable denoising in the Scene tab
 
