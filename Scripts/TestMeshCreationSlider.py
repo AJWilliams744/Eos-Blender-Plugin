@@ -10,6 +10,12 @@ from numpy import random
 
 maxSlider = 20
 
+bl_info  = {
+    "name" : "Eos Interface",
+    "blender" : (2,80,0),
+    "catagory" : "Eos"
+}
+
 class ShapeKeeper(): # Stores model data for currently selected model
     base = ""
     modelPath = ""
@@ -423,9 +429,6 @@ def loadFaceModel(modelPath, blendshapePath = ""): # Load model into shape keepe
 
     model = eos.morphablemodel.load_model(modelPath)
 
-    print("HAS MODEL THING :")
-    print(model.get_expression_model_type())
-
     modelType = model.get_expression_model_type()
 
     if(modelType == model.ExpressionModelType(0) and blendshapePath != ""):
@@ -795,8 +798,6 @@ class Link_REye_Vertex(bpy.types.Operator):# Link right eye vetices button
         if(not len(children) == 2):
             self.report({"ERROR"}, "Too many eyes")
             return {'FINISHED'}
-
-        print(children)
       
         rightEye = children[1]   
 
@@ -1186,6 +1187,7 @@ def register():
     bpy.types.Object.my_settings = bpy.props.PointerProperty(type=MySettings)
     bpy.types.Object.sliders = bpy.props.PointerProperty(type=SliderList)
     bpy.types.Scene.global_setting = bpy.props.PointerProperty(type=GlobalSettings)
+    print("EOS Interface Loaded")
 
 def unregister():
     from bpy.utils import unregister_class

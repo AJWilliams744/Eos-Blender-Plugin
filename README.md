@@ -1,5 +1,9 @@
-# MorphableFaces
-Code for Blender plugin using morphable faces
+# Eos Blender Plugin
+Code for Blender plugin using Eos
+
+INSTALL PLUGIN
+	Edit->Prefrences->Add-ons->Install
+	Tick Eos Interface to enable or disable
 
 LOADING MODEL
 	Select file with model
@@ -42,6 +46,9 @@ RESETTING SLIDERS
 CHANGING SLIDERS
 	Max shown is 20 until the show more button pressed
 	Adjust sliders as you want
+
+CHANGING EYE COLOUR
+	
 
 RENDERING TIPS
 	If using Eevee and the eyes enable "Screen Space Reflection" in Scene and enable "Refraction" in "Screen Space Reflection"
