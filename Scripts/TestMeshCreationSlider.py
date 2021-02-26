@@ -612,8 +612,8 @@ class Create_New_Model(bpy.types.Operator): # Create model button
 
 class Save_Selected_Vertex(bpy.types.Operator): # Save selected vertices button
     bl_idname = "view3d.save_selected_vertex"
-    bl_label = "Save Selected Verticies"
-    bl_destription = "A button to save selected vertecies"
+    bl_label = "Save Selected Vertices"
+    bl_destription = "A button to save selected vertices"
 
     def execute(self, context): # Button pressed
 
@@ -741,7 +741,7 @@ class Link_Eye_Model(bpy.types.Operator): # Link eyes button
 
 class Link_LEye_Vertex(bpy.types.Operator): # Link left eye vetices button
     bl_idname = "view3d.link_leye_vertex"
-    bl_label = "Link Left Eye Vertex"
+    bl_label = "Link Left Eye Vertices"
     bl_destription = "A button to link two verticies for the eye"
 
     def execute(self, context):        
@@ -778,7 +778,7 @@ class Link_LEye_Vertex(bpy.types.Operator): # Link left eye vetices button
 
 class Link_REye_Vertex(bpy.types.Operator):# Link right eye vetices button
     bl_idname = "view3d.link_reye_vertex"
-    bl_label = "Link Right Eye Vertex"
+    bl_label = "Link Right Eye Vertices"
     bl_destription = "A button to link two verticies for the eye"
 
     def execute(self, context):        
