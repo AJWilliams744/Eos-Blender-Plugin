@@ -64,5 +64,3 @@ I used info from [here](https://www.youtube.com/watch?v=JcHX4AT1vtg) to create t
 ### Rendering Tips
 	If using Eevee and the eyes enable "Screen Space Reflection" in Scene and enable "Refraction" in "Screen Space Reflection"
 	For best results render using cycles and enable denoising in the Scene tab
-
-
