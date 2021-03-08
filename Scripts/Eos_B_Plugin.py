@@ -195,31 +195,40 @@ def refreshAdvancedVertexMaterial(mat): # Creates and links necessary nodes for 
 
     ################################### CREATE/LINK BASE COLOUR SHADERS ##########################################    
 
-    baseVoronoi = nodes.new(type = "ShaderNodeTexVoronoi")
-    baseVoronoi.inputs['Scale'].default_value = 305.6
+    #baseVoronoi = nodes.new(type = "ShaderNodeTexVoronoi")
+    #baseVoronoi.inputs['Scale'].default_value = 305.6
 
-    baseColourRamp = createBasicColourRamp(nodes, 'B_SPLINE', 0.259, (0.767412,0.767412,0.767412,1), 0.814, (1,1,1,1))
-    baseMix = createMixRGBNode(nodes, 'MULTIPLY', 0.458)
+    #baseColourRamp = createBasicColourRamp(nodes, 'B_SPLINE', 0.259, (0.767412,0.767412,0.767412,1), 0.814, (1,1,1,1))
+    #baseMix = createMixRGBNode(nodes, 'MULTIPLY', 0.458)
 
-    links.new(baseVoronoi.outputs['Distance'], baseColourRamp.inputs['Fac'])
-    links.new(baseColourRamp.outputs['Color'], baseMix.inputs['Color2'])
-    links.new(vertexColour.outputs['Color'], baseMix.inputs['Color1'])
-    links.new(baseMix.outputs['Color'], bsdf.inputs['Base Color'])
+    #links.new(baseVoronoi.outputs['Distance'], baseColourRamp.inputs['Fac'])
+    #links.new(baseColourRamp.outputs['Color'], baseMix.inputs['Color2'])
+    #links.new(vertexColour.outputs['Color'], baseMix.inputs['Color1'])
+    #links.new(baseMix.outputs['Color'], bsdf.inputs['Base Color'])
+
+    links.new(vertexColour.outputs['Color'], bsdf.inputs['Base Color'])
 
     ################################### CREATE/LINK SUBSURFACE SHADERS ########################################## 
 
 
-    sufNoise = nodes.new(type="ShaderNodeTexNoise")
-    sufNoise.inputs['Scale'].default_value = 40.0
+    #sufNoise = nodes.new(type="ShaderNodeTexNoise")
+    #sufNoise.inputs['Scale'].default_value = 40.0
 
-    sufColourRamp = createBasicColourRamp(nodes, 'LINEAR', 0.0, (0,0,0,1), 1.0, (1,1,1,1))
-    sufMix = createMixRGBNode(nodes, 'MULTIPLY', 1.0)
+    #sufColourRamp = createBasicColourRamp(nodes, 'LINEAR', 0.0, (0,0,0,1), 1.0, (1,1,1,1))
+    #sufMix = createMixRGBNode(nodes, 'MULTIPLY', 1.0)
 
-    links.new(sufNoise.outputs['Color'], sufColourRamp.inputs['Fac'])
-    links.new(vertexColour.outputs['Color'], sufMix.inputs['Color2'])
-    links.new(sufColourRamp.outputs['Color'], sufMix.inputs['Color1'])
-    links.new(sufMix.outputs['Color'], bsdf.inputs['Subsurface Radius'])
-    links.new(sufMix.outputs['Color'], bsdf.inputs['Subsurface Color'])
+    #links.new(sufNoise.outputs['Color'], sufColourRamp.inputs['Fac'])
+    #links.new(vertexColour.outputs['Color'], sufMix.inputs['Color2'])
+    #links.new(sufColourRamp.outputs['Color'], sufMix.inputs['Color1'])
+    #links.new(sufMix.outputs['Color'], bsdf.inputs['Subsurface Radius'])
+    #links.new(sufMix.outputs['Color'], bsdf.inputs['Subsurface Color'])
+
+    sufRgb = nodes.new(type="ShaderNodeRGB")
+    sufRgb.outputs[0].default_value = (0.5, 0.0596146, 0.0151204, 1)
+
+    links.new(vertexColour.outputs['Color'], bsdf.inputs['Subsurface Color'])
+
+    links.new(sufRgb.outputs['Color'], bsdf.inputs['Subsurface Radius'])
 
     ################################### CREATE/LINK ROUGHNESS SHADERS ##########################################
 
@@ -230,7 +239,7 @@ def refreshAdvancedVertexMaterial(mat): # Creates and links necessary nodes for 
     roughVoronoi.inputs['Scale'].default_value = 305.6
 
     roughNRamp = createBasicColourRamp(nodes, 'B_SPLINE' , 0.168, (0.447988,0.447988,0.447988,1), 0.886, (1,1,1,1))
-    roughVRamp = createBasicColourRamp(nodes, 'LINEAR' , 0.0, (0.0412789,0.0412789,0.0412789,1), 0.0, (0.380056,0.380056,0.380056,1))
+    roughVRamp = createBasicColourRamp(nodes, 'LINEAR' , 0.0, (0.0412789,0.0412789,0.0412789,1), 1.0, (0.380056,0.380056,0.380056,1))
     roughMix = createMixRGBNode(nodes, 'MULTIPLY', 0.4)
 
     links.new(roughNoise.outputs['Fac'], roughNRamp.inputs['Fac'])
@@ -258,7 +267,7 @@ def refreshAdvancedVertexMaterial(mat): # Creates and links necessary nodes for 
 
     ######################################### EDIT OTHER VALUES ################################################
 
-    bsdf.inputs['Subsurface'].default_value = 0.290
+    bsdf.inputs['Subsurface'].default_value = 0.3
     bsdf.inputs['Metallic'].default_value = 0.0
     bsdf.inputs['Specular'].default_value = 0.1
     bsdf.inputs['Specular Tint'].default_value = 0.0

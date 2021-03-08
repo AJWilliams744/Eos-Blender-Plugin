@@ -3,6 +3,8 @@ Code for Blender plugin using Eos
 
 Eos for python [click here](https://pypi.org/project/eos-py/)
 
+I used info from [here](https://www.youtube.com/watch?v=JcHX4AT1vtg) to create the eyes
+
 ### Install Plugin
 	Edit->Prefrences->Add-ons->Install (Select "Eos_B_Plugin.py" from repo)
 	Tick "Eos Interface" to enable or disable
