@@ -118,7 +118,7 @@ def refreshColoursBM(mesh, coloursLocation, colours, textureCoordinates, texture
 
     return None
 
-def assignUV(mesh, textureCoordinates, shouldSmooth):
+def assignUV(mesh, textureCoordinates, shouldSmooth): # Assigns morphable models uv coordinates to the blender object
 
     if( mesh.loops.layers.uv.active == None ):
         new_uv = mesh.loops.layers.uv.new()
@@ -132,8 +132,6 @@ def assignUV(mesh, textureCoordinates, shouldSmooth):
         for loop in face.loops: # Loop each vertex (not always triangulated) 
 
             loop[uv_lay].uv = [textureCoordinates[loop.vert.index][0],textureCoordinates[loop.vert.index][1]]
-
-
 
 def getdeletionVerts(): # Load the file and collect vertices into a usable list
 
@@ -176,6 +174,53 @@ def createVertexMaterial(matName): # Creates a new material and then refreshes (
     refreshAdvancedVertexMaterial(mat)
 
     return mat
+
+def createImageMaterial(matName): # C
+
+    mat = bpy.data.materials.new(name = matName)
+
+    mat.use_nodes = True
+
+    nodes = mat.node_tree.nodes
+    links = mat.node_tree.links
+
+    links.clear()
+    nodes.clear()
+
+    bsdf = nodes.new(type="ShaderNodeBsdfPrincipled")
+
+    texCoord = nodes.new(type = "ShaderNodeTexCoord")
+
+    mapping = nodes.new(type = "ShaderNodeMapping")
+    mapping.inputs["Scale"].default_value[1] = -1
+
+    image = nodes.new(type = "ShaderNodeTexImage")
+
+    
+    output = nodes.new( type = "ShaderNodeOutputMaterial")
+
+    links.new(bsdf.outputs["BSDF"], output.inputs["Surface"])
+
+    links.new(image.outputs["Color"], bsdf.inputs["Base Color"])
+    links.new(image.outputs["Alpha"], bsdf.inputs["Alpha"])
+
+    links.new(mapping.outputs["Vector"], image.inputs["Vector"])
+    links.new(texCoord.outputs["UV"], mapping.inputs["Vector"])
+
+    bsdf.inputs['Subsurface'].default_value = 0.0
+    bsdf.inputs['Metallic'].default_value = 0.0
+    bsdf.inputs['Specular'].default_value = 0.0
+    bsdf.inputs['Specular Tint'].default_value = 0.0
+    bsdf.inputs['Roughness'].default_value = 1.0
+    bsdf.inputs['Anisotropic'].default_value = 0.0
+    bsdf.inputs['Anisotropic Rotation'].default_value = 0.0
+    bsdf.inputs['Sheen'].default_value = 0.0
+    bsdf.inputs['Sheen Tint'].default_value = 0.5
+    bsdf.inputs['Clearcoat'].default_value = 0.0
+    bsdf.inputs['Clearcoat Roughness'].default_value = 0.03
+    bsdf.inputs['IOR'].default_value = 1.450
+    bsdf.inputs['Transmission'].default_value = 0.0
+    bsdf.inputs['Transmission Roughness'].default_value = 0.0
 
 def refreshBasicVertexMaterial(mat): # Plugs vertex colour directly into diffuse shader (NOT USED)
 
@@ -321,15 +366,22 @@ def refreshAdvancedVertexMaterial(mat): # Creates and links necessary nodes for 
 def setMaterial(obj): # Create material for obj
 
     mat = bpy.data.materials.get("VertexColourMat") # Check to see if material exists in the scene
-
-    if(mat is None): # If mat doesn't exist create it 
-        mat = createVertexMaterial("VertexColourMat")
     
     if(not obj.data.materials): # If material not assigned to obj, assign it 
         obj.data.materials.append(mat)
         
-
     return
+
+def createMaterials(): #Creates materials required for models
+    mat = bpy.data.materials.get("VertexColourMat") # Check to see if material exists in the scene
+
+    imageMat = bpy.data.materials.get("ImageColourMat")
+    
+    if(mat is None): # If mat doesn't exist create it 
+        mat = createVertexMaterial("VertexColourMat")
+
+    if(imageMat is None):
+        createImageMaterial("ImageColourMat")
 
 def smoothObject(mesh, shouldSmooth):
     for f in mesh.polygons:
@@ -398,7 +450,7 @@ def refreshModel(sliderObj): # Refresh the model using the slider data
             bm = bmesh.new()
             bm.from_mesh(mesh)
 
-            assignUV(bm,morphModel.texcoords, shouldSmooth)
+            assignUV(bm,morphModel.texcoords, shouldSmooth) #Assign uv to object 
 
             if(obj.my_settings.DeleteVertex):
 
@@ -530,6 +582,8 @@ def createBaseShape(FilePath, blendShapePath = ""): # Create the base morphable 
         obj.my_settings.ExpressionCount = base.get_expression_model().get_num_principal_components() 
         obj.my_settings.ShapeCount = base.get_shape_model().get_num_principal_components()
         obj.my_settings.ColourCount = base.get_color_model().get_num_principal_components()
+
+    createMaterials() # Creates required materials when first model is created
 
     if(obj.my_settings.ColourCount != 0): setMaterial(obj) # If the model has a colour model set its material to advaced skin material 
 
