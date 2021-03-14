@@ -175,7 +175,7 @@ def createVertexMaterial(matName): # Creates a new material and then refreshes (
 
     return mat
 
-def createImageMaterial(matName): # C
+def createImageMaterial(matName): # Creates a new image material
 
     mat = bpy.data.materials.new(name = matName)
 
@@ -461,11 +461,6 @@ def refreshModel(sliderObj): # Refresh the model using the slider data
                     deleteVerts(bm, deletionVerts)
 
             bm.to_mesh(mesh)
-
-            # lastContext = bpy.context.area.type # Can't use bm mesh from image context 
-            # bpy.context.area.type = 'IMAGE_EDITOR'
-            # bpy.ops.transform.rotate(value=(radians(180)))
-            # bpy.context.area.type = lastContext
 
         else:
             refreshColoursBM(mesh, morphModel.tci, morphModel.colors,  morphModel.texcoords, morphModel.tti, shouldSmooth, obj.my_settings.DeleteVertex)
@@ -812,7 +807,7 @@ class Create_Copy_Model(bpy.types.Operator): # Create a copy of selected model b
 
 class Link_Eye_Model(bpy.types.Operator): # Link eyes button
     bl_idname = "view3d.link_eye_model"
-    bl_label = "Create Eye Model"
+    bl_label = "Load Eye Model"
     bl_destription = "A button to create a new eye model"
 
     def execute(self, context):
