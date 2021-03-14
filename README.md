@@ -20,10 +20,11 @@ I used info from [here](https://www.youtube.com/watch?v=JcHX4AT1vtg) to create t
 	Select either "ImageColourMat" or "VertexColourMat"
 	
 ### Assign Image to Image Material
-	Go to the shading tab
-	Move boxes so they are inline / not overlapping
-	Select the image texture node
-	Select open image and choose correct image from files
+	Go to the material section on the object
+	Click the small drop down arrow next to base colour
+	Click the open file button and choose a image
+	To choose one already loaded click the image dropdown and select from there
+
 
 ### Deleting Eye Vertices
 	Select the folder to store the .txt files of vertices
