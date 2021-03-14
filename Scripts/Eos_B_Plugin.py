@@ -568,6 +568,17 @@ def createBaseShape(FilePath, blendShapePath = ""): # Create the base morphable 
         obj.my_settings.ShapeCount = 0
         obj.my_settings.ColourCount = 0
 
+        print(secondMesh.texcoords)
+
+        if(secondMesh.texcoords != []): # If there are no UV don't try to add them, if none texcoords return an empty list []
+            mesh = obj.data
+
+            bm = bmesh.new() # No mesh changes so get set uv here
+            bm.from_mesh(mesh)
+            assignUV(bm, secondMesh.texcoords, False)        
+            bm.to_mesh(mesh)
+
+
     elif(modelType == base.ExpressionModelType.Blendshapes): # If blenshape model type
         obj.my_settings.ExpressionCount = len(base.get_expression_model())
         obj.my_settings.ShapeCount = base.get_shape_model().get_num_principal_components()
