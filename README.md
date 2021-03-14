@@ -37,7 +37,7 @@ I used info from [here](https://www.youtube.com/watch?v=JcHX4AT1vtg) to create t
 
 ### Adding Eye
 	Select the file "eye.blend" from the repository
-	Click "Create Eye Model" button
+	Click "Load Eye Model" button
 	
 ### Linking Eyes to Shape Movements
 	With "Hide Vertex" ticked go into edit mode
