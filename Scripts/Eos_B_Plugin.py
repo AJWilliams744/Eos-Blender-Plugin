@@ -6,6 +6,8 @@ from enum import Enum
 import os.path
 import mathutils
 
+from math import radians
+
 from numpy import random
 
 maxSlider = 20
@@ -60,31 +62,49 @@ def getCoefficients(o): # return a 2D list containing all of the coefficients Sh
 
     return me
 
-def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth, shouldDelete): # Refresh colours using the BM mesh instead of normal mesh (much faster)
+def refreshColoursBM(mesh, coloursLocation, colours, textureCoordinates, textureLocations, shouldSmooth, shouldDelete): # Refresh colours using the BM mesh instead of normal mesh (much faster)
 
     bm = bmesh.new()
     bm.from_mesh(mesh)
 
     if not bm.loops.layers.color:
         bm.loops.layers.color.new("color")
+        print("NEW")
 
     colour_layer =  bm.loops.layers.color['color']
 
     i = 0
     x = 0
 
+    #print("---------")
+    #print(len(textureCoordinates))
+    #print(textureLocations)
+
+    if( bm.loops.layers.uv.active == None):
+        new_uv = bm.loops.layers.uv.new()
+
+    uv_lay = bm.loops.layers.uv.active
+
+
     for face in bm.faces:
 
-        vertexLocation = coloursLocation[x] # Get colours stored as [x,y,z] from eos list
+        #vertexLocation = coloursLocation[x] # Get colours stored as [x,y,z] from eos list
+        #uvLocation = textureLocations[x]
         face.smooth = shouldSmooth # Smooth each face if needed
 
         i = 0
         for loop in face.loops: # Loop each vertex (not always triangulated)
-            color = [colours[vertexLocation[i]][0],colours[vertexLocation[i]][1],colours[vertexLocation[i]][2],1.0] # Must include alpha
+            color = [colours[coloursLocation[x][i]][0],colours[coloursLocation[x][i]][1],colours[coloursLocation[x][i]][2],1.0] # Must include alpha
             loop[colour_layer] = color
+          
+
+            loop[uv_lay].uv = [textureCoordinates[textureLocations[x][i]][0],textureCoordinates[textureLocations[x][i]][1]]
+
             i += 1
+       
            
         x += 1
+    #print(x)
 
     if(shouldDelete):
 
@@ -97,6 +117,23 @@ def refreshColoursBM(mesh, coloursLocation, colours, shouldSmooth, shouldDelete)
     bm.to_mesh(mesh) # Convert bmesh back to blender mesh
 
     return None
+
+def assignUV(mesh, textureCoordinates, shouldSmooth):
+
+    if( mesh.loops.layers.uv.active == None ):
+        new_uv = mesh.loops.layers.uv.new()
+
+    uv_lay = mesh.loops.layers.uv.active
+
+    for face in mesh.faces:
+
+        face.smooth = shouldSmooth # Smooth each face if needed
+
+        for loop in face.loops: # Loop each vertex (not always triangulated) 
+
+            loop[uv_lay].uv = [textureCoordinates[loop.vert.index][0],textureCoordinates[loop.vert.index][1]]
+
+
 
 def getdeletionVerts(): # Load the file and collect vertices into a usable list
 
@@ -343,7 +380,7 @@ def refreshModel(sliderObj): # Refresh the model using the slider data
     morphModel = aShapeKeeper.base.draw_sample(coofficient[0],coofficient[2],coofficient[1])
 
     if((sliderObj.sliderType == SliderType.Colour.value or not mesh.vertex_colors) and obj.my_settings.ColourCount != 0 and not obj.my_settings.DeleteVertex): # If only colours are changing
-        refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth, False)
+        refreshColoursBM(mesh, morphModel.tci, morphModel.colors, morphModel.texcoords, morphModel.tti, shouldSmooth, False)
 
     else: # If any vertex positions are changing
 
@@ -356,22 +393,30 @@ def refreshModel(sliderObj): # Refresh the model using the slider data
         mesh.from_pydata(verts, edges, faces) # Creates new mesh under the same object
         
         if(obj.my_settings.ColourCount == 0) :  # This is also called in refresh colours (Faster if called in refresh so redundant code is needed)
-            smoothObject(mesh, shouldSmooth)
+           # smoothObject(mesh, shouldSmooth)
+
+            bm = bmesh.new()
+            bm.from_mesh(mesh)
+
+            assignUV(bm,morphModel.texcoords, shouldSmooth)
 
             if(obj.my_settings.DeleteVertex):
 
                 deletionVerts = getdeletionVerts()    
 
                 if(not deletionVerts == None):
-                    bm = bmesh.new()
-                    bm.from_mesh(mesh)
 
                     deleteVerts(bm, deletionVerts)
 
-                    bm.to_mesh(mesh)
+            bm.to_mesh(mesh)
+
+            # lastContext = bpy.context.area.type # Can't use bm mesh from image context 
+            # bpy.context.area.type = 'IMAGE_EDITOR'
+            # bpy.ops.transform.rotate(value=(radians(180)))
+            # bpy.context.area.type = lastContext
 
         else:
-            refreshColoursBM(mesh, morphModel.tci, morphModel.colors,shouldSmooth, obj.my_settings.DeleteVertex)
+            refreshColoursBM(mesh, morphModel.tci, morphModel.colors,  morphModel.texcoords, morphModel.tti, shouldSmooth, obj.my_settings.DeleteVertex)
 
     # If the model has left and right eye coordinets move and scale eyes
     if(obj.my_settings.HasEye and aShapeKeeper.leftEye != "" and aShapeKeeper.rightEye != "" and obj.my_settings.LeftEyeVertices != "" and obj.my_settings.RightEyeVertices != ""):
