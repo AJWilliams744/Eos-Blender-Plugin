@@ -69,16 +69,11 @@ def refreshColoursBM(mesh, coloursLocation, colours, textureCoordinates, texture
 
     if not bm.loops.layers.color:
         bm.loops.layers.color.new("color")
-        print("NEW")
 
     colour_layer =  bm.loops.layers.color['color']
 
     i = 0
     x = 0
-
-    #print("---------")
-    #print(len(textureCoordinates))
-    #print(textureLocations)
 
     if( bm.loops.layers.uv.active == None):
         new_uv = bm.loops.layers.uv.new()
@@ -88,8 +83,6 @@ def refreshColoursBM(mesh, coloursLocation, colours, textureCoordinates, texture
 
     for face in bm.faces:
 
-        #vertexLocation = coloursLocation[x] # Get colours stored as [x,y,z] from eos list
-        #uvLocation = textureLocations[x]
         face.smooth = shouldSmooth # Smooth each face if needed
 
         i = 0
@@ -104,7 +97,6 @@ def refreshColoursBM(mesh, coloursLocation, colours, textureCoordinates, texture
        
            
         x += 1
-    #print(x)
 
     if(shouldDelete):
 
@@ -567,8 +559,6 @@ def createBaseShape(FilePath, blendShapePath = ""): # Create the base morphable 
         obj.my_settings.ExpressionCount = 0
         obj.my_settings.ShapeCount = 0
         obj.my_settings.ColourCount = 0
-
-        print(secondMesh.texcoords)
 
         if(secondMesh.texcoords != []): # If there are no UV don't try to add them, if none texcoords return an empty list []
             mesh = obj.data
