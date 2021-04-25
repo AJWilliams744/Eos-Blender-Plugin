@@ -8,7 +8,7 @@ I used info from [here](https://www.youtube.com/watch?v=JcHX4AT1vtg) to create t
 ### Install Plugin
 	Edit->Preferences->Add-ons->Install (Select "Eos_B_Plugin.py" from repo)
 	Tick "Eos Interface" to enable or disable
-	Place Eos python file inside blender modules folder
+	Place Eos python file inside blender modules folder (found in site packages folder in python directory)
 	"Path to Blender"\Blender Foundation\Blender "Version"\"Version"\scripts\modules
 
 ### Loading Model
