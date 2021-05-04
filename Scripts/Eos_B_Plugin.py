@@ -777,7 +777,7 @@ class Create_Copy_Model(bpy.types.Operator): # Create a copy of selected model b
         obj.my_settings.FileName = (filePath.split("\\")[-1])[:-4]
 
         obj.my_settings.BlendshapePath = blendshapePath
-        obj.scale = (0.03, 0.03, 0.03) # Object huge on import
+        obj.scale = (0.01, 0.01, 0.01) # Blender's default metric is meters, 3DMM is centimeters
         
 
         return {'FINISHED'}
