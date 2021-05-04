@@ -274,7 +274,7 @@ def refreshAdvancedVertexMaterial(mat): # Creates and links necessary nodes for 
     ################################### CREATE/LINK SUBSURFACE SHADERS ########################################## 
 
     sufRgb = nodes.new(type="ShaderNodeRGB")
-    sufRgb.outputs[0].default_value = (0.5, 0.0596146, 0.0151204, 1)
+    sufRgb.outputs[0].default_value = (0.5, 0.0, 0.0, 1)
 
     links.new(vertexColour.outputs['Color'], bsdf.inputs['Subsurface Color'])
 
@@ -301,7 +301,7 @@ def refreshAdvancedVertexMaterial(mat): # Creates and links necessary nodes for 
     ################################### CREATE/LINK BUMP SHADERS ##########################################
 
     bumpVoronoi = nodes.new(type = "ShaderNodeTexVoronoi")
-    bumpVoronoi.inputs['Scale'].default_value = 517.4
+    bumpVoronoi.inputs['Scale'].default_value = 1000.0
 
     bumpRamp = createBasicColourRamp(nodes, 'LINEAR' , 0.0, (0,0,0,1), 1, (0.0508648,0.0508648,0.0508648,1))
 
