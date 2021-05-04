@@ -269,33 +269,9 @@ def refreshAdvancedVertexMaterial(mat): # Creates and links necessary nodes for 
 
     ################################### CREATE/LINK BASE COLOUR SHADERS ##########################################    
 
-    #baseVoronoi = nodes.new(type = "ShaderNodeTexVoronoi")
-    #baseVoronoi.inputs['Scale'].default_value = 305.6
-
-    #baseColourRamp = createBasicColourRamp(nodes, 'B_SPLINE', 0.259, (0.767412,0.767412,0.767412,1), 0.814, (1,1,1,1))
-    #baseMix = createMixRGBNode(nodes, 'MULTIPLY', 0.458)
-
-    #links.new(baseVoronoi.outputs['Distance'], baseColourRamp.inputs['Fac'])
-    #links.new(baseColourRamp.outputs['Color'], baseMix.inputs['Color2'])
-    #links.new(vertexColour.outputs['Color'], baseMix.inputs['Color1'])
-    #links.new(baseMix.outputs['Color'], bsdf.inputs['Base Color'])
-
     links.new(vertexColour.outputs['Color'], bsdf.inputs['Base Color'])
 
     ################################### CREATE/LINK SUBSURFACE SHADERS ########################################## 
-
-
-    #sufNoise = nodes.new(type="ShaderNodeTexNoise")
-    #sufNoise.inputs['Scale'].default_value = 40.0
-
-    #sufColourRamp = createBasicColourRamp(nodes, 'LINEAR', 0.0, (0,0,0,1), 1.0, (1,1,1,1))
-    #sufMix = createMixRGBNode(nodes, 'MULTIPLY', 1.0)
-
-    #links.new(sufNoise.outputs['Color'], sufColourRamp.inputs['Fac'])
-    #links.new(vertexColour.outputs['Color'], sufMix.inputs['Color2'])
-    #links.new(sufColourRamp.outputs['Color'], sufMix.inputs['Color1'])
-    #links.new(sufMix.outputs['Color'], bsdf.inputs['Subsurface Radius'])
-    #links.new(sufMix.outputs['Color'], bsdf.inputs['Subsurface Color'])
 
     sufRgb = nodes.new(type="ShaderNodeRGB")
     sufRgb.outputs[0].default_value = (0.5, 0.0596146, 0.0151204, 1)
@@ -713,7 +689,7 @@ class Create_New_Model(bpy.types.Operator): # Create model button
 
         obj.my_settings.BlendshapePath = blendshapePath
 
-        obj.scale = (0.03, 0.03, 0.03) # The head is huge on import
+        obj.scale = (0.01, 0.01, 0.01) # Blender's default metric is meters, 3DMM is centimeters
 
         return {'FINISHED'}
 
